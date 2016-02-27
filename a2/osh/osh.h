@@ -3,11 +3,14 @@
 #define _OSH_OSH_H_
 
 #include "InputHandler.cpp"
+#include "parser.cpp"
 
 class osh
 {
   private:
     InputHandler inputHandler;
+    Parser parser;
+
     void printPrompt();
 
   public:

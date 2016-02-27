@@ -6,11 +6,13 @@
 
 #include "globals.h"
 #include "osh.h"
+#include "command.cpp"
+#include "parser.cpp"
 
 void osh::printPrompt()
 {
     std::cout << "type 'exit' to exit" << std::endl;
-    std::cout<<prompt;
+    std::cout << prompt;
 }
 
 int osh::run()
@@ -18,7 +20,7 @@ int osh::run()
     int status = status_success;
     bool stop = false;
 
-    std::string command;
+    Command command;
     std::string exit = "exit";
 
     this->inputHandler.clear();
@@ -27,10 +29,12 @@ int osh::run()
     while (stop != true)
     {
         this->printPrompt();
-        // std::cin >> command;
+
+        this->inputHandler.clear();
         this->inputHandler.readInput();
 
-        //std::cout << command << std::endl;
+        /*
+        // here is where we call the parser to fill up command
         while (0 == this->inputHandler.getNextToken(token))
         {
             std::cout << token << std::endl;
@@ -39,6 +43,10 @@ int osh::run()
                 stop = true;
             }
         }
+        */
+
+        this->parser.getCommandList(inputHandler, command);
+
     }
 
     std::cout << "Exit from shell";
