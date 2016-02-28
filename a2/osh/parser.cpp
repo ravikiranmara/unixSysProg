@@ -35,7 +35,7 @@ int Parser::initCommand(Command &commmand)
     {
         commmand.set_inputMode(I_Stdin);
         commmand.set_parseState(NeedToken);
-        return status;
+        return status_success;
     }
 
     // check if we need to init stdin
@@ -64,6 +64,7 @@ int Parser::initArgv(InputHandler &inputHandler, Command &command)
         // get token
         if(status_success != inputHandler.getNextToken(token))
         {
+            command.set_parseState(Parsed);
             this->endOfInput = true;
             break;
         }
@@ -79,7 +80,7 @@ int Parser::initArgv(InputHandler &inputHandler, Command &command)
         {
             this->prevSymbol = token;
             command.set_runNextCommand(token);
-            setParseState(command, token);
+            setParseState(inputHandler, command, token);
             endOfCommand = true;
         }
         else
@@ -91,6 +92,7 @@ int Parser::initArgv(InputHandler &inputHandler, Command &command)
 
     // now convert string vector to argv
     argv = NULL;
+    cout << "initArgv::Token size : " << tokens.size() << std::endl;
     if(0 < tokens.size())
     {
         int length = tokens.size();
@@ -109,6 +111,7 @@ int Parser::initArgv(InputHandler &inputHandler, Command &command)
     else
     {
         // this is a blank command
+        cout << "set parse state == null" << std::endl;
         command.set_parseState(Invalid);
         argv = new char*[1];
         argv[0] = NULL;
@@ -117,10 +120,11 @@ int Parser::initArgv(InputHandler &inputHandler, Command &command)
     // assign to argv
     command.set_argv(argv);
 
+    cout << "parse exit" << std::endl;
     return status;
 }
 
-int Parser::setParseState(Command &command, string symbol)
+int Parser::setParseState(InputHandler &inputHandler, Command &command, string symbol)
 {
     if(0 == symbol.compare(redir_stdin))
     {
@@ -130,6 +134,11 @@ int Parser::setParseState(Command &command, string symbol)
     else if(0 == symbol.compare(redir_stdout) || 0 == symbol.compare(append_stdout))
     {
         command.set_parseState(OutPath);
+    }
+
+    else if (0 == symbol.compare(redir_pipe))
+    {
+        command.set_parseState(Pipesym);
     }
 
     else
@@ -151,13 +160,17 @@ int Parser::initInputOutput(InputHandler &inputHandler, Command &command)
         command.set_inputMode(I_File);
         inputHandler.getNextToken(token);
         command.set_inputFilename(token);
+        command.set_runNextCommand(r_none);
+        command.set_parseState(conditionalExec);
     }
 
     else if(command.get_runNextCommand() == r_redir_stdout)
     {
         command.set_outputMode(O_FileNew);
         inputHandler.getNextToken(token);
+        command.set_runNextCommand(r_none);
         command.set_outputFilename(token);
+        command.set_parseState(conditionalExec);
     }
 
     else if(command.get_runNextCommand() == r_append_stdout)
@@ -165,14 +178,21 @@ int Parser::initInputOutput(InputHandler &inputHandler, Command &command)
         command.set_outputMode(O_Append);
         inputHandler.getNextToken(token);
         command.set_outputFilename(token);
+        command.set_runNextCommand(r_none);
+        command.set_parseState(conditionalExec);
     }
 
     else if(command.get_runNextCommand() == r_redir_pipe)
     {
         command.set_outputMode(O_Pipe);
+        command.set_runNextCommand(r_none);
+        command.set_parseState(Parsed);
+    }
+    else
+    {
+        command.set_parseState(Parsed);
     }
 
-    command.set_parseState(Parsed);
     return status;
 }
 
@@ -216,6 +236,29 @@ bool Parser::isTokenValid(string token)
     return status;
 }
 
+int Parser::initConditionalExecSymbol(InputHandler &inputHandler, Command &command)
+{
+    int status = status_success;
+    string token;
+
+    status = inputHandler.peekNextToken(token);
+
+    if(status_success == status)
+    {
+        if((0 == token.compare(exec_any)) ||
+            (0 == token.compare(exec_onfailure)) ||
+            (0 == token.compare(exec_onsuccess)))
+        {
+            // get the value and append
+            inputHandler.getNextToken(token);
+            command.set_runNextCommand(token);
+        }
+    }
+
+    command.set_parseState(Parsed);
+    return status;
+}
+
 int Parser::getCommandList(InputHandler &inputHandler, Command &command)
 {
     int status = status_success;
@@ -223,6 +266,8 @@ int Parser::getCommandList(InputHandler &inputHandler, Command &command)
     string exit = "exit";
     string temp;
     Command *tempCommand = NULL;
+    Command *first = NULL;
+    Command *curr = NULL;
 
     this->endOfInput = false;
 
@@ -240,32 +285,53 @@ int Parser::getCommandList(InputHandler &inputHandler, Command &command)
             status = initArgv(inputHandler, *tempCommand);
         }
 
-        // if we hit an empty command, then exita
-        if(true == this->endOfInput)
-        {
-            delete tempCommand;
-            break;
-        }
-
         // if redirect, set redirect
         if(status_success == status &&
-            (InPath == tempCommand->get_parseState() || OutPath == tempCommand->get_parseState()))
+            (InPath == tempCommand->get_parseState() ||
+            OutPath == tempCommand->get_parseState() ||
+            Pipesym == tempCommand->get_parseState()))
         {
             status = this->initInputOutput(inputHandler, *tempCommand);
+        }
+
+        if(status_success == status && conditionalExec == tempCommand->get_parseState())
+        {
+            this->initConditionalExecSymbol(inputHandler, *tempCommand);
         }
 
         //we are done, now append and send
         if(status_success == status && Parsed == tempCommand->get_parseState())
         {
             this->prevCommand = tempCommand;
-            command = *tempCommand;
+            if(NULL == first)
+            {
+                cout << "init first" << std::endl;
+                first = tempCommand;
+                curr = first;
+            }
+            else
+            {
+                curr->next = tempCommand;
+                curr = curr->next;
+            }
         }
 
-        tempCommand->DumpCommand();
+        if(Invalid == tempCommand->get_parseState())
+        {
+            delete tempCommand;
+            tempCommand = NULL;
+        }
+
+        // is end of line
+        if(true == this->endOfInput)
+        {
+            break;
+        }
     }
 
-
+    command = *first;
     return status;
 }
+
 
 #endif

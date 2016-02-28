@@ -24,6 +24,7 @@ class Command
     RunNextCommandSymbol runNextCommand;
 
     pid_t pid;
+    int rval;
 
   public:
     Command *next;
@@ -40,6 +41,8 @@ class Command
         this->outputFilename = "";
         this->inputMode = I_Stdin;
         this->outputMode = O_Stdout;
+        this->rval = -1;
+        this->runNextCommand = r_none;
         this->next = NULL;
 
         return;
@@ -47,6 +50,17 @@ class Command
 
     ~Command()
     {
+    }
+
+    int get_rval()
+    {
+        return this->rval;
+    }
+
+    int set_rval(int val)
+    {
+        this->rval = val;
+        return val;
     }
 
     ParseState get_parseState()
@@ -232,6 +246,20 @@ class Command
         return argv;
     }
 
+    int get_executable(string &executable)
+    {
+        string empty("");
+        executable = empty;
+
+        if(NULL != argv[0])
+        {
+            string temp(argv[0]);
+            executable = temp;
+        }
+
+        return status_success;
+    }
+
     void DumpCommand()
     {
         cout << "==============   Dump Command  ===============" << std::endl;
@@ -255,6 +283,18 @@ class Command
 
         cout << std::endl << "----------------------------------------------------" << std::endl;
         return;
+    }
+
+    void DumpCommandChain()
+    {
+        Command *curr = this;
+
+        cout << "------  DUMP CHAIN  ------" << std::endl;
+        while (NULL != curr)
+        {
+            curr->DumpCommand();
+            curr = curr->next;
+        }
     }
 };
 

@@ -4,12 +4,14 @@
 
 #include "InputHandler.cpp"
 #include "parser.cpp"
+#include "executor.cpp"
 
 class osh
 {
   private:
     InputHandler inputHandler;
     Parser parser;
+    Executor executor;
 
     void printPrompt();
 

@@ -83,6 +83,24 @@ int InputHandler::getNextToken(string& token)
     return status;
 }
 
+int InputHandler::peekNextToken(string& token)
+{
+    int status = status_success;
+    string temp;
+
+    if(tokenIndex < this->tokens.size())
+    {
+        temp = this->tokens[this->tokenIndex];
+        token = trim(temp);
+    }
+    else
+    {
+        token = "";
+        status = status_fail;
+    }
+
+    return status;
+}
 
 
 #endif

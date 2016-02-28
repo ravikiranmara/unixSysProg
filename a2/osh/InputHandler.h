@@ -29,6 +29,7 @@ class InputHandler
 
     int readInput();
     int getNextToken(string &token);
+    int peekNextToken(string &token);
     void clear();
 
 

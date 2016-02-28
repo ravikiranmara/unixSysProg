@@ -19,7 +19,8 @@ class Parser
     int initInputOutput(InputHandler &inputHandler, Command &command);
     bool isEndOfCommand(string symbol);
     bool isTokenValid(string token);
-    int setParseState(Command &command, string symbol);
+    int setParseState(InputHandler &inputHandler, Command &command, string symbol);
+    int initConditionalExecSymbol(InputHandler &inputHandler, Command &command);
 
     bool isTokenSymbol(string token);
 

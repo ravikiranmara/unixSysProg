@@ -11,6 +11,7 @@ using std::string;
 const int status_success = 0;
 const int status_fail = 1;
 const string prompt = "osh>";
+const string exitCommand = "exit";
 const int Invalid_Pid = 1;
 const int Invalid_Fid = 1;
 
@@ -37,7 +38,8 @@ enum RunNextCommandSymbol
     r_redir_pipe,
     r_exec_any,
     r_exec_onsuccess,
-    r_exec_onfailure
+    r_exec_onfailure,
+    r_none
 };
 
 enum ParseState
@@ -47,8 +49,10 @@ enum ParseState
     NewCommand,
     InPath,
     OutPath,
+    Pipesym,
     Parsed,
-    executing
+    executing,
+    conditionalExec
 };
 
 enum TokenState

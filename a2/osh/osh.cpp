@@ -8,6 +8,7 @@
 #include "osh.h"
 #include "command.cpp"
 #include "parser.cpp"
+#include "executor.cpp"
 
 void osh::printPrompt()
 {
@@ -33,20 +34,11 @@ int osh::run()
         this->inputHandler.clear();
         this->inputHandler.readInput();
 
-        /*
-        // here is where we call the parser to fill up command
-        while (0 == this->inputHandler.getNextToken(token))
-        {
-            std::cout << token << std::endl;
-            if(0 == token.compare(exit))
-            {
-                stop = true;
-            }
-        }
-        */
-
         this->parser.getCommandList(inputHandler, command);
 
+        command.DumpCommandChain();
+
+        //this->executor.executeCommandList(command);
     }
 
     std::cout << "Exit from shell";
