@@ -18,6 +18,7 @@ int Executor::childExecFunction(Command &command)
     int rval = 0;
     string token;
     pid_t pid = -1;
+    char **argv;
 
     command.get_executable(token);
 
@@ -32,13 +33,22 @@ int Executor::childExecFunction(Command &command)
 
 
     // exec child
+    int binlen = token.length()+1;
+    char *bin = new char[binlen];
+    strncpy(bin, token.c_str(), binlen);
+    argv = command.get_argv();
 
+    if(-1 == execvp(bin, argv))
+    {
+       rval = errno;
+       cout << "Error when execlp:(" << errno << ")- " << strerror(errno) << std::endl;
+    }
 
     // set rval in child
     command.set_rval(rval);
 
     cout << "Child executing : " << token << " , id - " << command.get_pid() << std::endl;
-
+    delete bin;
     exit(rval);
 }
 
