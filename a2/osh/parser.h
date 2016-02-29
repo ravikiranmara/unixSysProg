@@ -28,7 +28,7 @@ class Parser
     Parser();
     ~Parser();
 
-    int getCommandList(InputHandler &inputHandler, Command &command);
+    int getCommandList(InputHandler &inputHandler, Command **command);
 };
 
 

@@ -2,27 +2,42 @@
 #define _OSH_EXECUTOR_CPP_
 
 #include "executor.h"
+#include <sys/wait.h>
 
 Executor::Executor()
 {
+    this->exitShell = false;
 }
 
 Executor::~Executor()
 {
 }
 
-void Executor::execChild(Command &command)
+int Executor::childExecFunction(Command &command)
 {
     int rval = 0;
+    string token;
+    pid_t pid = -1;
 
-    // command set parse state, pid
+    command.get_executable(token);
+
+    // command set parse state
+    command.set_parseState(executing);
+
+    // pid
+    pid = getpid();
+    command.set_pid(pid);
 
     // fixup command
 
+
     // exec child
+
 
     // set rval in child
     command.set_rval(rval);
+
+    cout << "Child executing : " << token << " , id - " << command.get_pid() << std::endl;
 
     exit(rval);
 }
@@ -47,6 +62,17 @@ bool Executor::isWaitForChild(Command &command)
     }
 
     return false;
+}
+
+bool Executor::get_isExitFromShell()
+{
+    return this->exitShell;
+}
+
+bool Executor::set_isExitFromShell(bool state)
+{
+    this->exitShell = state;
+    return this->exitShell;
 }
 
 bool Executor::isExecNextCommand(Command &command)
@@ -99,34 +125,80 @@ bool Executor::isCommandExit(Command &command)
     return rval;
 }
 
-int Executor::executeCommandList(Command &command)
+int Executor::executeCommandList(Command *command)
 {
     int status = status_success;
     Command *curr;
+    string bin;
+    pid_t childpid = 0;
+    int childRval = 0;
+
+    if(NULL == command)
+    {
+        return status;
+    }
 
     // validate command
-    if(false == this->isCommandChainValid(command))
+    if(false == this->isCommandChainValid(*command))
     {
         // a better error message
         return status_fail;
     }
 
-    curr = &command;
+    curr = command;
     while(NULL != curr)
     {
         // is command exit
+        if(isCommandExit(*curr))
+        {
+            this->set_isExitFromShell(true);
+            break;
+        }
 
         // fork child
+        if(-1 == (childpid = fork()))
+        {
+            // fork failed
+            exit(1);
+        }
 
-        // wait for next command
+        if(0 == childpid)
+        {
+            this->childExecFunction(*curr);
+        }
+        else
+        {
+            curr->get_executable(bin);
+            cout << bin << " - ";
 
-        // wait for next commnad
+            // wait for next command
+            if(this->isWaitForChild(*curr) || NULL == curr->next)
+            {
+                cout << "\nWait for child\n";
+                waitpid(childpid, &childRval, 0);  // Parent process waits here for child to terminate.
+                cout << "\nChild exited:(" << childRval <<")\n";
+            }
 
-        // if(fail)skip next command
-        cout << "exec command " << std::endl;
+            /*
+            //if(true == this->isExecNextCommand(*curr))
+            {
+                cout << "exec next command\n";
+            }
+            //else
+            {
+                cout << "skip command : update curr\n";
+            //    curr = curr->next;
+            }
+            */
 
-        curr->DumpCommand();
-        curr = curr->next;
+            if(NULL != curr)
+            {
+                curr = curr->next;
+            }
+
+            //int blah;
+            //cin >> blah;
+        }
     }
 
     return status;

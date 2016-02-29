@@ -92,7 +92,6 @@ int Parser::initArgv(InputHandler &inputHandler, Command &command)
 
     // now convert string vector to argv
     argv = NULL;
-    cout << "initArgv::Token size : " << tokens.size() << std::endl;
     if(0 < tokens.size())
     {
         int length = tokens.size();
@@ -111,7 +110,6 @@ int Parser::initArgv(InputHandler &inputHandler, Command &command)
     else
     {
         // this is a blank command
-        cout << "set parse state == null" << std::endl;
         command.set_parseState(Invalid);
         argv = new char*[1];
         argv[0] = NULL;
@@ -120,7 +118,6 @@ int Parser::initArgv(InputHandler &inputHandler, Command &command)
     // assign to argv
     command.set_argv(argv);
 
-    cout << "parse exit" << std::endl;
     return status;
 }
 
@@ -259,7 +256,7 @@ int Parser::initConditionalExecSymbol(InputHandler &inputHandler, Command &comma
     return status;
 }
 
-int Parser::getCommandList(InputHandler &inputHandler, Command &command)
+int Parser::getCommandList(InputHandler &inputHandler, Command **command)
 {
     int status = status_success;
 
@@ -305,7 +302,6 @@ int Parser::getCommandList(InputHandler &inputHandler, Command &command)
             this->prevCommand = tempCommand;
             if(NULL == first)
             {
-                cout << "init first" << std::endl;
                 first = tempCommand;
                 curr = first;
             }
@@ -329,7 +325,7 @@ int Parser::getCommandList(InputHandler &inputHandler, Command &command)
         }
     }
 
-    command = *first;
+    *command = first;
     return status;
 }
 

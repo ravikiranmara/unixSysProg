@@ -4,19 +4,25 @@
 class Executor
 {
   private:
+    bool exitShell;
+
     int patchIO();
     bool isCommandChainValid(Command &command);
-    void execChild(Command &command);
     bool isWaitForChild(Command &command);
     bool isExecNextCommand(Command &command);
     bool isCommandExit(Command &command);
     bool isSkipNextCommand(Command &command);
 
+    int childExecFunction(Command &command);
+
   public:
     Executor();
     ~Executor();
 
-    int executeCommandList(Command &command);
+    bool get_isExitFromShell();
+    bool set_isExitFromShell(bool status);
+
+    int executeCommandList(Command *command);
 };
 
 #endif

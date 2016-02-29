@@ -3,6 +3,7 @@
 #define _OSH_OSH_CPP_
 
 #include <string>
+#include <unistd.h>
 
 #include "globals.h"
 #include "osh.h"
@@ -12,7 +13,8 @@
 
 void osh::printPrompt()
 {
-    std::cout << "type 'exit' to exit" << std::endl;
+//    std::cout << "type 'exit' to exit" << std::endl;
+    //std::cout << "(" << getpid() << ") ";
     std::cout << prompt;
 }
 
@@ -21,7 +23,7 @@ int osh::run()
     int status = status_success;
     bool stop = false;
 
-    Command command;
+    Command *command = NULL;
     std::string exit = "exit";
 
     this->inputHandler.clear();
@@ -34,11 +36,14 @@ int osh::run()
         this->inputHandler.clear();
         this->inputHandler.readInput();
 
-        this->parser.getCommandList(inputHandler, command);
+        this->parser.getCommandList(inputHandler, &command);
 
-        command.DumpCommandChain();
+        this->executor.executeCommandList(command);
 
-        //this->executor.executeCommandList(command);
+        if(true == this->executor.get_isExitFromShell())
+        {
+            break;
+        }
     }
 
     std::cout << "Exit from shell";
