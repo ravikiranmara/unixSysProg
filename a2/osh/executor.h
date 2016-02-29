@@ -12,6 +12,7 @@ class Executor
     bool isExecNextCommand(Command &command);
     bool isCommandExit(Command &command);
     bool isSkipNextCommand(Command &command);
+    int fixupStdinOut(Command &command);
 
     int childExecFunction(Command &command);
 

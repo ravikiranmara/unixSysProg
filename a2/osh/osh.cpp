@@ -14,7 +14,7 @@
 void osh::printPrompt()
 {
 //    std::cout << "type 'exit' to exit" << std::endl;
-    //std::cout << "(" << getpid() << ") ";
+    std::cout << "(" << getpid() << ") ";
     std::cout << prompt;
 }
 
@@ -24,12 +24,11 @@ int osh::run()
     bool stop = false;
 
     Command *command = NULL;
-    std::string exit = "exit";
 
     this->inputHandler.clear();
     std::string token;
 
-    while (stop != true)
+    while (true != stop)
     {
         this->printPrompt();
 
@@ -42,11 +41,11 @@ int osh::run()
 
         if(true == this->executor.get_isExitFromShell())
         {
-            break;
+            stop = true;
         }
     }
 
-    std::cout << "Exit from shell";
+    //std::cout << "Exit from shell";
     return status;
 }
 

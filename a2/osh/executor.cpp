@@ -3,6 +3,10 @@
 
 #include "executor.h"
 #include <sys/wait.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
+using std::cerr;
 
 Executor::Executor()
 {
@@ -11,6 +15,78 @@ Executor::Executor()
 
 Executor::~Executor()
 {
+}
+
+int Executor::fixupStdinOut(Command &command)
+{
+    int ifile = -1;
+    int ofile = -1;
+    string token;
+    int length;
+    char *filename = NULL;
+
+    if(I_File == command.get_inputMode())
+    {
+        cout << "udate input stream" << std::endl;
+        token = command.get_inputFilename();
+        length = token.length();
+
+        filename = new char[length + 1];
+        strncpy(filename, token.c_str(), length+1);
+        if(-1 == (ifile = open(token.c_str(), O_RDONLY)))
+        {
+            cerr << "Error Opening input redir file:(" << errno << ")-" << strerror(errno);
+            return errno;
+        }
+
+        // if create was successful, now dup file handle
+        if(-1 == dup2(ifile, STDIN_FILENO))
+        {
+            cerr << "Error dup input redir file:(" << errno << ")-" << strerror(errno);
+            return errno;
+        }
+
+        command.set_inputFid(ifile);
+        delete filename;
+    }
+
+    if(O_FileNew == command.get_outputMode() || O_Append == command.get_outputMode())
+    {
+        cout << "udate output stream" << std::endl;
+        token = command.get_outputFilename();
+        length = token.length();
+        int openmode;
+        mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
+
+        filename = new char[length+1];
+        strncpy(filename, token.c_str(), length+1);
+
+        if(O_FileNew == command.get_outputMode())
+        {
+            openmode = O_WRONLY | O_CREAT;
+        }
+        else
+        {
+            openmode = O_WRONLY | O_APPEND;
+        }
+
+        if(-1 == (ofile = open(token.c_str(), openmode, mode)))
+        {
+            cerr << "Error Opening output redir file:(" << errno << ")-" << strerror(errno);
+            return errno;
+        }
+
+        if(-1 == dup2(ofile, STDOUT_FILENO))
+        {
+            cerr << "Error dup output redir file:(" << errno << ")-" << strerror(errno);
+            return errno;
+        }
+
+        command.set_outputFid(ofile);
+        delete filename;
+    }
+
+    return status_success;
 }
 
 int Executor::childExecFunction(Command &command)
@@ -30,7 +106,7 @@ int Executor::childExecFunction(Command &command)
     command.set_pid(pid);
 
     // fixup command
-
+    this->fixupStdinOut(command);
 
     // exec child
     int binlen = token.length()+1;
@@ -184,30 +260,21 @@ int Executor::executeCommandList(Command *command)
             // wait for next command
             if(this->isWaitForChild(*curr) || NULL == curr->next)
             {
-                cout << "\nWait for child\n";
+                //cout << "\nWait for child\n";
                 waitpid(childpid, &childRval, 0);  // Parent process waits here for child to terminate.
-                cout << "\nChild exited:(" << childRval <<")\n";
+                //cout << "\nChild exited:(" << childRval <<")\n";
             }
 
-            /*
-            //if(true == this->isExecNextCommand(*curr))
+            if(true != this->isExecNextCommand(*curr))
             {
-                cout << "exec next command\n";
+                //cout << "skip command : update curr\n";
+                curr = curr->next;
             }
-            //else
-            {
-                cout << "skip command : update curr\n";
-            //    curr = curr->next;
-            }
-            */
 
             if(NULL != curr)
             {
                 curr = curr->next;
             }
-
-            //int blah;
-            //cin >> blah;
         }
     }
 
