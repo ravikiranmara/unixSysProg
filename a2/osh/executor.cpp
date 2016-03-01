@@ -63,7 +63,7 @@ int Executor::fixupStdinOut(Command &command)
 
         if(O_FileNew == command.get_outputMode())
         {
-            openmode = O_WRONLY | O_CREAT;
+            openmode = O_WRONLY | O_CREAT | O_TRUNC;
         }
         else
         {
@@ -84,6 +84,27 @@ int Executor::fixupStdinOut(Command &command)
 
         command.set_outputFid(ofile);
         delete filename;
+    }
+
+    if(O_Pipe == command.get_outputMode())
+    {
+        // pipe is already created. just join them
+        cout << "dupe out" << std::endl;
+        if(-1 == dup2(command.get_outputFid(), STDOUT_FILENO))
+        {
+            cerr << "Error attaching pipe to stdout:(" << errno << ")-" << strerror(errno);
+            return errno;
+        }
+    }
+
+    if(I_Pipe == command.get_inputMode())
+    {
+        cout << "dupe in" << std::endl;
+        if(-1 == dup2(command.get_inputFid(), STDIN_FILENO))
+        {
+            cerr << "Error attaching pipe to stdin:(" << errno << ")" << strerror(errno);
+            return errno;
+        }
     }
 
     return status_success;
@@ -121,7 +142,7 @@ int Executor::childExecFunction(Command &command)
     }
 
     // set rval in child
-    command.set_rval(rval);
+    //command.set_rval(rval);
 
     cout << "Child executing : " << token << " , id - " << command.get_pid() << std::endl;
     delete bin;
@@ -185,7 +206,7 @@ bool Executor::isSkipNextCommand(Command &command)
     int prevRval = command.get_rval();
 
     if((r_exec_onfailure == run && 0 == prevRval) ||
-        (r_exec_onsuccess == run && 1 == prevRval))
+        (r_exec_onsuccess == run && 0 != prevRval))
     {
         rval = true;
     }
@@ -211,13 +232,42 @@ bool Executor::isCommandExit(Command &command)
     return rval;
 }
 
+int Executor::pipeCommands(Command &command, int pipeid[2])
+{
+    int status = status_success;
+
+    // check if command
+    if(O_Pipe != command.get_outputMode())
+    {
+        return status;
+    }
+
+    // create pipe
+    if(-1 == pipe(pipeid))
+    {
+        status = errno;
+        cout << "Error creating pipe:(" << errno << ")-" << strerror(errno);
+    }
+
+    // attach to command and next
+    if(status_success == status)
+    {
+        cout << "set pipe fid incommand" << std::endl;
+        command.set_outputFid(pipeid[PipeWriteIndex]);
+        (command.next)->set_inputFid(pipeid[PipeReadIndex]);
+    }
+
+    return status;
+}
+
 int Executor::executeCommandList(Command *command)
 {
     int status = status_success;
-    Command *curr;
+    Command *curr, *prev;
     string bin;
     pid_t childpid = 0;
     int childRval = 0;
+    int pipeid[2];
 
     if(NULL == command)
     {
@@ -231,6 +281,8 @@ int Executor::executeCommandList(Command *command)
         return status_fail;
     }
 
+    bool piped = false;
+    prev = NULL;
     curr = command;
     while(NULL != curr)
     {
@@ -239,6 +291,16 @@ int Executor::executeCommandList(Command *command)
         {
             this->set_isExitFromShell(true);
             break;
+        }
+
+        piped = false;
+
+        // make pipe if pipe
+        if(O_Pipe == curr->get_outputMode())
+        {
+            cout << "call pipe" << std::endl;
+            status = this->pipeCommands(*curr, pipeid);
+            piped = true;
         }
 
         // fork child
@@ -250,29 +312,43 @@ int Executor::executeCommandList(Command *command)
 
         if(0 == childpid)
         {
+            if(true == piped)
+            {
+                close(pipeid[PipeReadIndex]);
+            }
+
             this->childExecFunction(*curr);
         }
         else
         {
+            if(true == piped)
+                close(pipeid[PipeWriteIndex]);
+
             curr->get_executable(bin);
             cout << bin << " - ";
 
             // wait for next command
             if(this->isWaitForChild(*curr) || NULL == curr->next)
             {
-                //cout << "\nWait for child\n";
+                cout << "\nWait for child\n";
                 waitpid(childpid, &childRval, 0);  // Parent process waits here for child to terminate.
-                //cout << "\nChild exited:(" << childRval <<")\n";
+                curr->set_rval(childRval);
+
+                //if(true == piped)
+                //    close(pipeid[PipeWriteIndex]);
+
+                cout << "\nChild exited:(" << childRval <<")-" << strerror(childRval) << "\n";
             }
 
-            if(true != this->isExecNextCommand(*curr))
+            if(true == this->isSkipNextCommand(*curr))
             {
-                //cout << "skip command : update curr\n";
+                cout << "skip command : update curr\n";
                 curr = curr->next;
             }
 
             if(NULL != curr)
             {
+                prev = curr;
                 curr = curr->next;
             }
         }

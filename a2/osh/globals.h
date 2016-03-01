@@ -14,6 +14,8 @@ const string prompt = "osh>";
 const string exitCommand = "exit";
 const int Invalid_Pid = 1;
 const int Invalid_Fid = 1;
+const int PipeReadIndex = 0;
+const int PipeWriteIndex = 1;
 
 enum InputMode
 {
