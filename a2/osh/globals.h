@@ -46,6 +46,7 @@ enum RunNextCommandSymbol
 
 enum ParseState
 {
+    Blank,
     Invalid,
     NeedToken,
     NewCommand,

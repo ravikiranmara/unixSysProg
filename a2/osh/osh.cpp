@@ -35,9 +35,14 @@ int osh::run()
         this->inputHandler.clear();
         this->inputHandler.readInput();
 
-        this->parser.getCommandList(inputHandler, &command);
+        status = this->parser.getCommandList(inputHandler, &command);
 
-        this->executor.executeCommandList(command);
+        if(status_success == status)
+            this->executor.executeCommandList(command);
+        else
+        {
+            cerr << "Ambiguous command format\n";
+        }
 
         if(true == this->executor.get_isExitFromShell())
         {

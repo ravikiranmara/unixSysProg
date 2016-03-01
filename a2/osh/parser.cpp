@@ -59,10 +59,12 @@ int Parser::initArgv(InputHandler &inputHandler, Command &command)
     char **argv;
     int i;
 
+    //cout << "initArgv" << std::endl;
+
     while (true != endOfArgv)
     {
         // get token
-        if(status_success != inputHandler.getNextToken(token))
+        if(status_success != inputHandler.peekNextToken(token))
         {
             command.set_parseState(Parsed);
             this->endOfInput = true;
@@ -78,14 +80,12 @@ int Parser::initArgv(InputHandler &inputHandler, Command &command)
         // if token != symbol
         if(true == this->isTokenSymbol(token))
         {
-            this->prevSymbol = token;
-            command.set_runNextCommand(token);
-            setParseState(inputHandler, command, token);
             endOfArgv = true;
         }
         else
         {
             // add to token
+            inputHandler.getNextToken(token);
             tokens.push_back(token);
         }
     }
@@ -110,9 +110,17 @@ int Parser::initArgv(InputHandler &inputHandler, Command &command)
     else
     {
         // this is a blank command
-        command.set_parseState(Invalid);
-        argv = new char*[1];
-        argv[0] = NULL;
+        if(NULL != this->prevCommand)
+        {
+            if(O_Pipe == this->prevCommand->get_outputMode())
+                command.set_parseState(Invalid);
+        }
+        else
+        {
+            command.set_parseState(Blank);
+            argv = new char*[1];
+            argv[0] = NULL;
+        }
     }
 
     // assign to argv
@@ -121,91 +129,73 @@ int Parser::initArgv(InputHandler &inputHandler, Command &command)
     return status;
 }
 
-int Parser::setParseState(InputHandler &inputHandler, Command &command, string symbol)
-{
-    if(0 == symbol.compare(redir_stdin))
-    {
-        command.set_parseState(InPath);
-    }
-
-    else if(0 == symbol.compare(redir_stdout) || 0 == symbol.compare(append_stdout))
-    {
-        command.set_parseState(OutPath);
-    }
-
-    else if (0 == symbol.compare(redir_pipe))
-    {
-        command.set_parseState(Pipesym);
-    }
-    else if((0 == symbol.compare (exec_any)) ||
-        (0 == symbol.compare (exec_onfailure))  ||
-        (0 == symbol.compare (exec_onsuccess)))
-    {
-        command.set_parseState(conditionalExec);
-    }
-
-    else
-    {
-        command.set_parseState(Parsed);
-    }
-
-    return status_success;
-}
-
 int Parser::initInputOutput(InputHandler &inputHandler, Command &command)
 {
     int status = status_success;
     string token;
+    //cout << "init IO" << std::endl;
 
-    // check if the last symbol was redirect
-    if(command.get_runNextCommand() == r_redir_stdin)
+    // read token
+    status = inputHandler.getNextToken(token);
+
+    if(0 == token.compare(redir_stdin))
     {
+        if(I_Stdin != command.get_inputMode())
+        {
+            command.set_parseState(Invalid);
+            return status_fail;
+        }
+
         command.set_inputMode(I_File);
         inputHandler.getNextToken(token);
+        command.set_runNextCommand(token);
         command.set_inputFilename(token);
-        command.set_runNextCommand(r_none);
-       // command.set_parseState(conditionalExec);
     }
 
-    else if(command.get_runNextCommand() == r_redir_stdout)
+    else if(0 == token.compare(redir_stdout))
     {
+        if(O_Stdout != command.get_outputMode())
+        {
+            command.set_parseState(Invalid);
+            return status_fail;
+        }
+
         command.set_outputMode(O_FileNew);
         inputHandler.getNextToken(token);
-        command.set_runNextCommand(r_none);
+        command.set_runNextCommand(token);
         command.set_outputFilename(token);
-        //command.set_parseState(conditionalExec);
     }
 
-    else if(command.get_runNextCommand() == r_append_stdout)
+    else if(0 == token.compare(append_stdout))
     {
+        if(O_Stdout != command.get_outputMode())
+        {
+            command.set_parseState(Invalid);
+            return status_fail;
+        }
+
         command.set_outputMode(O_Append);
         inputHandler.getNextToken(token);
         command.set_outputFilename(token);
-        command.set_runNextCommand(r_none);
+        command.set_runNextCommand(token);
         //command.set_parseState(conditionalExec);
     }
 
-    else if(command.get_runNextCommand() == r_redir_pipe)
+    else if(0 == token.compare(redir_pipe))
     {
-        command.set_outputMode(O_Pipe);
-        command.set_runNextCommand(r_none);
-        //command.set_parseState(Parsed);
-    }
-    else
-    {
-        //command.set_parseState(Parsed);
-    }
+        if(O_Stdout != command.get_outputMode())
+        {
+            command.set_parseState(Invalid);
+            return status_fail;
+        }
 
-    inputHandler.peekNextToken(token);
-    if(true == this->isTokenSymbol(token))
-    {
-        inputHandler.getNextToken(token);
-        setParseState(inputHandler, command, token);
+        command.set_outputMode(O_Pipe);
         command.set_runNextCommand(token);
+        command.set_parseState(Parsed);
     }
     else
     {
-        command.set_parseState(Parsed);
+        //command.set_parseState(Parsed);
     }
 
     return status;
@@ -256,19 +246,9 @@ int Parser::initConditionalExecSymbol(InputHandler &inputHandler, Command &comma
     int status = status_success;
     string token;
 
-    status = inputHandler.peekNextToken(token);
-
-    if(status_success == status)
-    {
-        if((0 == token.compare(exec_any)) ||
-            (0 == token.compare(exec_onfailure)) ||
-            (0 == token.compare(exec_onsuccess)))
-        {
-            // get the value and append
-            inputHandler.getNextToken(token);
-            command.set_runNextCommand(token);
-        }
-    }
+    // get the value and append
+    inputHandler.getNextToken(token);
+    command.set_runNextCommand(token);
 
     command.set_parseState(Parsed);
     return status;
@@ -280,14 +260,31 @@ int Parser::getCommandList(InputHandler &inputHandler, Command **command)
 
     string exit = "exit";
     string temp;
+    string token, dummy;
     Command *tempCommand = NULL;
     Command *first = NULL;
     Command *curr = NULL;
 
     this->endOfInput = false;
 
-    while (true)
+    int i = 0;
+    while (i++ < 50)
     {
+        //cout << "iter : " << i << std::endl;
+        if(true == inputHandler.isEndOfLine())
+        {
+            // we have parsed all the line. now exit
+            //cout <<"end of line exit\n";
+            if(NULL != tempCommand)
+            {
+                if(Invalid != tempCommand->get_parseState())
+                {
+                    tempCommand->set_parseState(Parsed);
+                }
+            }
+            break;
+        }
+
         // create our new commnd
         tempCommand = new Command();
 
@@ -300,27 +297,67 @@ int Parser::getCommandList(InputHandler &inputHandler, Command **command)
             status = initArgv(inputHandler, *tempCommand);
         }
 
-        while ((Parsed != tempCommand->get_parseState()) &&
-            (Invalid != tempCommand->get_parseState()))
+        // blank check
+        if(Blank == tempCommand->get_parseState())
         {
+            if(NULL != this->prevCommand)
+            {
+                if(O_Pipe == this->prevCommand->get_outputMode())
+                {
+                    tempCommand->set_parseState(Invalid);
+                    break;
+                }
+            }
+
+            delete tempCommand;
+            continue;
+        }
+
+        while ((Parsed != tempCommand->get_parseState()) &&
+            (Invalid != tempCommand->get_parseState()) &&
+            (Blank != tempCommand->get_parseState()))
+        {
+            // peek and set parse_state
+            status = inputHandler.peekNextToken(token);
+
             // if redirect, set redirect
             if(status_success == status &&
-                (InPath == tempCommand->get_parseState() ||
-                OutPath == tempCommand->get_parseState() ||
-                Pipesym == tempCommand->get_parseState()))
+                ((0 == token.compare(redir_stdout))  ||
+                (0 == token.compare(redir_stdin))   ||
+                (0 == token.compare(redir_pipe))    ||
+                (0 == token.compare(append_stdout))))
+
             {
                 status = this->initInputOutput(inputHandler, *tempCommand);
             }
 
-            if(status_success == status && conditionalExec == tempCommand->get_parseState())
+            else if(status_success == status &&
+                ((0 == token.compare(exec_any)) ||
+                (0 == token.compare(exec_onfailure)) ||
+                (0 == token.compare(exec_onsuccess))))
             {
                 this->initConditionalExecSymbol(inputHandler, *tempCommand);
             }
+
+            if(true == this->isEndOfCommand(token) ||
+                status_fail == inputHandler.peekNextToken(dummy))
+            {
+                //cout << "end of command exit\n";
+
+                if(Invalid != tempCommand->get_parseState())
+                {
+                    tempCommand->set_parseState(Parsed);
+                }
+
+                break;
+            }
         }
 
+        //cout << "end of command line" << std::endl;
         //we are done, now append and send
         if(status_success == status && Parsed == tempCommand->get_parseState())
         {
+            //cout << "init my first\n";
             this->prevCommand = tempCommand;
             if(NULL == first)
             {
@@ -334,20 +371,29 @@ int Parser::getCommandList(InputHandler &inputHandler, Command **command)
             }
         }
 
-        if(Invalid == tempCommand->get_parseState())
+        else if (Blank == tempCommand->get_parseState())
         {
+
             delete tempCommand;
+            //cout << "Blank" << std::endl;
             tempCommand = NULL;
         }
 
-        // is end of line
-        if(true == this->endOfInput)
+        else if(Invalid == tempCommand->get_parseState())
         {
+            delete tempCommand;
+            // std::cerr << "Invalid Command" << std::endl;
+            status = status_fail;
+            tempCommand = NULL;
+            first = NULL;
             break;
         }
     }
 
     *command = first;
+/*    if(NULL != command)
+        (*command)->DumpCommandChain();
+*/
     return status;
 }
 

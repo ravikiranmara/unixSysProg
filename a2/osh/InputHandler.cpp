@@ -23,6 +23,11 @@ InputHandler::~InputHandler()
     this->clear();
 }
 
+bool InputHandler::isEndOfLine()
+{
+    return (tokenIndex < this->tokens.size())? false :true;
+}
+
 void InputHandler::clear()
 {
     this->tokens.clear();
@@ -80,6 +85,7 @@ int InputHandler::getNextToken(string& token)
         status = 1;
     }
 
+    //cout << "return token : " << token << std::endl;
     return status;
 }
 
