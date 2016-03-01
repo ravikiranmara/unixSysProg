@@ -55,11 +55,11 @@ int Parser::initArgv(InputHandler &inputHandler, Command &command)
     int status = status_success;
     vector<string> tokens;
     string token;
-    bool endOfCommand = false;
+    bool endOfArgv = false;
     char **argv;
     int i;
 
-    while (true != endOfCommand)
+    while (true != endOfArgv)
     {
         // get token
         if(status_success != inputHandler.getNextToken(token))
@@ -81,7 +81,7 @@ int Parser::initArgv(InputHandler &inputHandler, Command &command)
             this->prevSymbol = token;
             command.set_runNextCommand(token);
             setParseState(inputHandler, command, token);
-            endOfCommand = true;
+            endOfArgv = true;
         }
         else
         {
@@ -137,6 +137,12 @@ int Parser::setParseState(InputHandler &inputHandler, Command &command, string s
     {
         command.set_parseState(Pipesym);
     }
+    else if((0 == symbol.compare (exec_any)) ||
+        (0 == symbol.compare (exec_onfailure))  ||
+        (0 == symbol.compare (exec_onsuccess)))
+    {
+        command.set_parseState(conditionalExec);
+    }
 
     else
     {
@@ -158,7 +164,7 @@ int Parser::initInputOutput(InputHandler &inputHandler, Command &command)
         inputHandler.getNextToken(token);
         command.set_inputFilename(token);
         command.set_runNextCommand(r_none);
-        command.set_parseState(conditionalExec);
+       // command.set_parseState(conditionalExec);
     }
 
     else if(command.get_runNextCommand() == r_redir_stdout)
@@ -167,7 +173,7 @@ int Parser::initInputOutput(InputHandler &inputHandler, Command &command)
         inputHandler.getNextToken(token);
         command.set_runNextCommand(r_none);
         command.set_outputFilename(token);
-        command.set_parseState(conditionalExec);
+        //command.set_parseState(conditionalExec);
     }
 
     else if(command.get_runNextCommand() == r_append_stdout)
@@ -176,14 +182,26 @@ int Parser::initInputOutput(InputHandler &inputHandler, Command &command)
         inputHandler.getNextToken(token);
         command.set_outputFilename(token);
         command.set_runNextCommand(r_none);
-        command.set_parseState(conditionalExec);
+        //command.set_parseState(conditionalExec);
     }
 
     else if(command.get_runNextCommand() == r_redir_pipe)
     {
         command.set_outputMode(O_Pipe);
         command.set_runNextCommand(r_none);
-        command.set_parseState(Parsed);
+        //command.set_parseState(Parsed);
+    }
+    else
+    {
+        //command.set_parseState(Parsed);
+    }
+
+    inputHandler.peekNextToken(token);
+    if(true == this->isTokenSymbol(token))
+    {
+        inputHandler.getNextToken(token);
+        setParseState(inputHandler, command, token);
+        command.set_runNextCommand(token);
     }
     else
     {
@@ -282,18 +300,22 @@ int Parser::getCommandList(InputHandler &inputHandler, Command **command)
             status = initArgv(inputHandler, *tempCommand);
         }
 
-        // if redirect, set redirect
-        if(status_success == status &&
-            (InPath == tempCommand->get_parseState() ||
-            OutPath == tempCommand->get_parseState() ||
-            Pipesym == tempCommand->get_parseState()))
+        while ((Parsed != tempCommand->get_parseState()) &&
+            (Invalid != tempCommand->get_parseState()))
         {
-            status = this->initInputOutput(inputHandler, *tempCommand);
-        }
+            // if redirect, set redirect
+            if(status_success == status &&
+                (InPath == tempCommand->get_parseState() ||
+                OutPath == tempCommand->get_parseState() ||
+                Pipesym == tempCommand->get_parseState()))
+            {
+                status = this->initInputOutput(inputHandler, *tempCommand);
+            }
 
-        if(status_success == status && conditionalExec == tempCommand->get_parseState())
-        {
-            this->initConditionalExecSymbol(inputHandler, *tempCommand);
+            if(status_success == status && conditionalExec == tempCommand->get_parseState())
+            {
+                this->initConditionalExecSymbol(inputHandler, *tempCommand);
+            }
         }
 
         //we are done, now append and send

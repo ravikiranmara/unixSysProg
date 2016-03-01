@@ -27,7 +27,7 @@ int Executor::fixupStdinOut(Command &command)
 
     if(I_File == command.get_inputMode())
     {
-        cout << "udate input stream" << std::endl;
+        //cout << "udate input stream" << std::endl;
         token = command.get_inputFilename();
         length = token.length();
 
@@ -52,7 +52,7 @@ int Executor::fixupStdinOut(Command &command)
 
     if(O_FileNew == command.get_outputMode() || O_Append == command.get_outputMode())
     {
-        cout << "udate output stream" << std::endl;
+        //cout << "udate output stream" << std::endl;
         token = command.get_outputFilename();
         length = token.length();
         int openmode;
@@ -89,7 +89,7 @@ int Executor::fixupStdinOut(Command &command)
     if(O_Pipe == command.get_outputMode())
     {
         // pipe is already created. just join them
-        cout << "dupe out" << std::endl;
+        //cout << "dupe out" << std::endl;
         if(-1 == dup2(command.get_outputFid(), STDOUT_FILENO))
         {
             cerr << "Error attaching pipe to stdout:(" << errno << ")-" << strerror(errno);
@@ -99,7 +99,7 @@ int Executor::fixupStdinOut(Command &command)
 
     if(I_Pipe == command.get_inputMode())
     {
-        cout << "dupe in" << std::endl;
+        //cout << "dupe in" << std::endl;
         if(-1 == dup2(command.get_inputFid(), STDIN_FILENO))
         {
             cerr << "Error attaching pipe to stdin:(" << errno << ")" << strerror(errno);
@@ -138,13 +138,13 @@ int Executor::childExecFunction(Command &command)
     if(-1 == execvp(bin, argv))
     {
        rval = errno;
-       cout << "Error when execlp:(" << errno << ")- " << strerror(errno) << std::endl;
+       cerr << "Error when execlp:(" << errno << ")- " << strerror(errno) << std::endl;
     }
 
     // set rval in child
     //command.set_rval(rval);
 
-    cout << "Child executing : " << token << " , id - " << command.get_pid() << std::endl;
+    //cout << "Child executing : " << token << " , id - " << command.get_pid() << std::endl;
     delete bin;
     exit(rval);
 }
@@ -246,13 +246,13 @@ int Executor::pipeCommands(Command &command, int pipeid[2])
     if(-1 == pipe(pipeid))
     {
         status = errno;
-        cout << "Error creating pipe:(" << errno << ")-" << strerror(errno);
+        cerr << "Error creating pipe:(" << errno << ")-" << strerror(errno);
     }
 
     // attach to command and next
     if(status_success == status)
     {
-        cout << "set pipe fid incommand" << std::endl;
+        //cerr << "set pipe fid incommand" << std::endl;
         command.set_outputFid(pipeid[PipeWriteIndex]);
         (command.next)->set_inputFid(pipeid[PipeReadIndex]);
     }
@@ -298,7 +298,7 @@ int Executor::executeCommandList(Command *command)
         // make pipe if pipe
         if(O_Pipe == curr->get_outputMode())
         {
-            cout << "call pipe" << std::endl;
+            //cout << "call pipe" << std::endl;
             status = this->pipeCommands(*curr, pipeid);
             piped = true;
         }
@@ -325,24 +325,24 @@ int Executor::executeCommandList(Command *command)
                 close(pipeid[PipeWriteIndex]);
 
             curr->get_executable(bin);
-            cout << bin << " - ";
+            //cout << bin << " - ";
 
             // wait for next command
             if(this->isWaitForChild(*curr) || NULL == curr->next)
             {
-                cout << "\nWait for child\n";
+                //cout << "\nWait for child\n";
                 waitpid(childpid, &childRval, 0);  // Parent process waits here for child to terminate.
                 curr->set_rval(childRval);
 
                 //if(true == piped)
                 //    close(pipeid[PipeWriteIndex]);
 
-                cout << "\nChild exited:(" << childRval <<")-" << strerror(childRval) << "\n";
+                //cout << "\nChild exited:(" << childRval <<")-" << strerror(childRval) << "\n";
             }
 
             if(true == this->isSkipNextCommand(*curr))
             {
-                cout << "skip command : update curr\n";
+                //cout << "skip command : update curr\n";
                 curr = curr->next;
             }
 

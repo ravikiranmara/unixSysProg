@@ -14,7 +14,7 @@
 void osh::printPrompt()
 {
 //    std::cout << "type 'exit' to exit" << std::endl;
-    std::cout << "(" << getpid() << ") ";
+    //std::cout << "(" << getpid() << ") ";
     std::cout << prompt;
 }
 
