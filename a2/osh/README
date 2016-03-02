@@ -1,0 +1,29 @@
+Learnt from assignment
+===========================
+
+ - A good insight into the System API, as we use file, process related api. 
+ - Process fork and exec. Understanding of input and output streams
+ - Interprocess communication - pipes to pass messages between process. This gives an introduction to the complexity of managing communication between process (eg. for shared memory, we need to do more work to manage the buffer, and synchronization)
+
+
+Code Structure
+=======================
+
+The code is mainly divided into the following modules, 
+ - main -> launches the osh
+ - osh -> shell container. run() - does the basic shell control loop. read input, parse, execute
+ - Command -> representation of user input command for program
+ - InputHandler -> reads input from user, stores in token. Makes it easy to handle input for Parser
+ - Parser -> parses the input, and creates linked list of Commands. Also does basic input validation. 
+ - Executor -> the output from Parser is submitted to executor, which executes the commands in the linked list given. 
+
+
+Known Issues 
+=================
+ - while loop can execute about 23 commands before exiting. this is done according to the directive as in assignment to prevent while (true) loop
+
+ - the code has some trouble handling EOF < ctrl-d > as input. If we were to give only <ctrl-d> as input, then read input function gets into an infinite loop, reading empty. <ctrl - c> to kill the program works. 
+ 
+ - we are leaking memory. The command structure allocated are not been freed properly. Though the code for freeing memory exists, it needs to be tested. 
+
+ - need to implement exceptions for better handling of error conditions. This will make the code more readable. 

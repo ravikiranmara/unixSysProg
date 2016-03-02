@@ -284,7 +284,8 @@ int Executor::executeCommandList(Command *command)
     bool piped = false;
     prev = NULL;
     curr = command;
-    while(NULL != curr)
+    int i = 0;
+    while(NULL != curr && i++ < 20)
     {
         // is command exit
         if(isCommandExit(*curr))

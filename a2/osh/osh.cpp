@@ -28,7 +28,8 @@ int osh::run()
     this->inputHandler.clear();
     std::string token;
 
-    while (true != stop)
+    int j = 0;
+    while (true != stop && j++ < 23)
     {
         this->printPrompt();
 
