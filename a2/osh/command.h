@@ -260,9 +260,70 @@ class Command
         return status_success;
     }
 
+    void DumpCommandMini()
+    {
+        cout << " ----------Command Details ----------> " << std::endl;
+        cout << "Command To run : " << this->binToExecute << std::endl;
+        cout << "Arguments argv : ";
+        int i = 0;
+        while (NULL != argv[i])
+        {
+            cout << argv[i] << " ";
+            i++;
+        }
+
+        cout << std::endl;
+
+        InputMode inm = this->get_inputMode();
+        string ipms = (I_Pipe == inm)? "PIPE":(I_File == inm)? "FILE":"STDIN";
+        cout << "Input mode :" << ipms << std::endl;
+
+        string inf;
+        if(0 == ipms.compare("FILE"))
+        {
+            inf = this->get_inputFilename();
+        }
+        cout << "Input filename : " << inf << std::endl;
+
+        string opf;
+        OutputMode opm = this->get_outputMode();
+        string opms;
+        switch (opm)
+        {
+            case O_Pipe:
+                opms = "PIPE";
+                break;
+            case O_FileNew:
+                opms = "REDIR";
+                break;
+
+            case O_Append:
+                opms = "REDIR APPEND";
+                break;
+
+            case O_Stdout:
+                opms = "STDOUT";
+                break;
+        }
+
+        cout << "Output Mode : " << opms << std::endl;
+
+        if(opm == O_FileNew || opm == O_Append)
+        {
+            opf = this->get_outputFilename();
+        }
+
+        cout << "Output Filename : " << opf << std::endl;
+        cout << "Connector symbol : " << get_nextCommandString(this->get_runNextCommand());
+
+        cout << "\n";
+
+        return;
+    }
+
     void DumpCommand()
     {
-        cout << "==============   Dump Command  ===============" << std::endl;
+        cout << "-------------   Dump Command  ------------" << std::endl;
         cout <<"Parse state:" << this->get_parseState() << std::endl;
         cout << "Input File Mode:" << this->get_inputMode() << std::endl;
         cout << "Input File Id:" << this->get_inputFid() << std::endl;
@@ -289,12 +350,14 @@ class Command
     {
         Command *curr = this;
 
-        cout << "------  DUMP CHAIN  ------" << std::endl;
+        cout << "======================  DUMP COMMAND LINKED LIST  ================================"<< std::endl;
         while (NULL != curr)
         {
-            curr->DumpCommand();
+            curr->DumpCommandMini();
             curr = curr->next;
         }
+        cout << "==============  END OF DUMP CHAIN ==============="<< std::endl;
+
     }
 };
 

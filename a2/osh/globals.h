@@ -3,10 +3,14 @@
 
 #include <string>
 #include <iostream>
+#include "logger.cpp"
 
 using std::cout;
 using std::cin;
 using std::string;
+
+Logger logger;
+
 
 const int status_success = 0;
 const int status_fail = 1;

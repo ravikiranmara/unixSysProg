@@ -36,6 +36,11 @@ int osh::run()
         this->inputHandler.readInput();
 
         status = this->parser.getCommandList(inputHandler, &command);
+        logger.log(info, "Got command list ");
+        if(logger.isLogMessage())
+        {
+            command->DumpCommandChain();
+        }
 
         if(status_success == status)
             this->executor.executeCommandList(command);

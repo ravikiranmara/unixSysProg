@@ -6,7 +6,7 @@
 #include <algorithm>
 #include <functional>
 #include <cctype>
-#include <locale>
+#include "globals.h"
 
 using std::string;
 using std::vector;
@@ -46,6 +46,48 @@ static inline std::string &rtrim(std::string &s) {
 // trim from both ends
 static inline std::string &trim(std::string &s) {
         return ltrim(rtrim(s));
+}
+
+static string get_nextCommandString(RunNextCommandSymbol symbol)
+{
+    string rval;
+
+    switch(symbol)
+    {
+        case r_redir_stdout:
+            rval = redir_stdout;
+            break;
+
+        case r_redir_stdin:
+            rval = redir_stdin;
+            break;
+
+        case r_append_stdout:
+            rval = append_stdout;
+            break;
+
+        case r_redir_pipe:
+            rval = redir_pipe;
+            break;
+
+        case r_exec_any:
+            rval = exec_any;
+            break;
+
+        case r_exec_onsuccess:
+            rval = exec_onsuccess;
+            break;
+
+        case r_exec_onfailure:
+            rval = exec_onfailure;
+            break;
+
+        case r_none:
+            rval = "";
+            break;
+    }
+
+    return rval;
 }
 
 #endif
