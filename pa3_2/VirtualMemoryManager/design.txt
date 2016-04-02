@@ -1,0 +1,144 @@
+Globals
+-------------------
+pagesize
+Virtual Memory size, 
+physical memory size, 
+
+
+virtual address = page + offset
+
+
+Modules
+---------
+
+Backing Store
+>> manages access to backing store. 
+>>>> read, write (dont need for now) page
+
+TLB
+>> manage cache. 
+>>>> lookup, replace -> replacement algo, clear, add
+
+
+PageTable
+>> manages page table
+>>>> lookup, replace-> replacement algo, clear, add, controlbits, 
+
+CPU
+>> address
+
+Physical memory
+>> Memory block, vector of pages. 
+
+Page(?)
+>> chunk of memory
+>>>> read, write
+
+VMM
+>> Main logic
+>>>> translate address
+
+=====================================
+
+Flow chart
+-----------------
+
+main()
+{
+    inititialize(physical memory, backing store)
+}
+
+cpu
+{
+    initialize vmm;
+
+    read address from input;
+    call vmm->translate();
+
+    return;
+}
+
+vmm::initialize()
+{
+    inititalize page table;
+    initialize tlb;
+
+    initialize physical memory
+    initialize backing store
+}
+
+vmm::translate(address)
+{
+    split address (pageno, offset)
+
+    if(miss == tlb->lookup(pageno))
+    {
+        tlbmiss = true;
+    }
+
+    frame = lookup (pageno)
+    if(tlbmiss == true)
+    {
+        tlb->add();
+    }
+
+    remake physical address
+    byte = physical->get(physical address);
+
+    return byte;
+}
+
+vmm::lookup()
+{
+    if(pagefault)
+    {
+        backingStore.get(); // how to you know which page to get(?)
+        update page table
+        update tlb
+    }
+    
+    return pagetable->frame;
+}
+
+
+
+====================================
+
+BackingStore
+{
+	done
+}
+
+TLB
+
+PageEntry
+{
+	
+}
+
+PageTable
+{
+	lookup()
+	addEntry()
+	dumpTable()
+}
+
+CPU
+
+Physical memory
+{
+	// set of frames
+
+	initialize, 
+	copy block
+	get byte
+	set byte
+	replace (not implemented)
+	find victim (not implemented)
+}
+
+Page (need to test)
+
+VMM
+
+
