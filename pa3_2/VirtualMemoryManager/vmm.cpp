@@ -100,7 +100,7 @@ class VirtualMemoryManager
         }
 
         /* page entry contains the frame number required */
-        physicalAddress = (frameno << numBitsForFrameOffset) + offset;
+        physicalAddress = (pageEntry.frameNumber << numBitsForFrameOffset) + offset;
 
     exit2:
     exit1:

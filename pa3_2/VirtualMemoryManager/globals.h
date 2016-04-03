@@ -4,6 +4,9 @@
 #include <sys/types.h>
 #include <stdint.h>
 #include <cmath>
+#include <string>
+
+using std::string;
 
 /*
 * Definitions for global and config data
@@ -12,6 +15,10 @@
 /* return status success */
 const int status_success = 0;
 const int status_failure = -1; /* there has to be a better way */
+
+/* backing store filename */
+const string BackingStoreFilename = "BACKING_STORE.bin";
+const string OutputFilename = "correct_check.txt";
 
 /* address representations */
 typedef uint16_t VirtualAddress;    /* represents logical address (8bit page no + 8 bit offset) */
