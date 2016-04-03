@@ -1,59 +1,67 @@
-Globals
--------------------
-pagesize
-Virtual Memory size, 
-physical memory size, 
+From the problem description, we see the following modules being identified for us readily. 
 
+BackingStore 
+    - represents the backing store(persistant storage of computer). The programs and files soted here are brought to memory.
+ a   - the memory is accessed in terms of chunks. (here page size), in real world, we might get more than a single page at at time. 
 
-virtual address = page + offset
-
-
-Modules
----------
-
-Backing Store
->> manages access to backing store. 
->>>> read, write (dont need for now) page
-
-TLB
->> manage cache. 
->>>> lookup, replace -> replacement algo, clear, add
-
+PhysicalMemory
+    - RAM divided into frames. Each frame is of page size
+    - number of frames depends on the size of physical memory
 
 PageTable
->> manages page table
->>>> lookup, replace-> replacement algo, clear, add, controlbits, 
+    - Contains the mapping of virtual address to physical address
+    - more specifically page number to frame number
 
-CPU
->> address
+TLB
+    - translation lookaside buffer
+    - cache to hold page number -> frame number mapping
 
-Physical memory
->> Memory block, vector of pages. 
-
-Page(?)
->> chunk of memory
->>>> read, write
-
-VMM
->> Main logic
->>>> translate address
+VirtualMemoryManager
+    - the module that overlooks memory management
+    - translates the virtual address to physical address
+    - (in our case) reads from the memory
+ 
+Page
+    - represents a page of memory
 
 =====================================
+
+
+Main Logic
+-----------------
+
+The program reads a set of logical address from a file, converts it to physical address and reads data. 
+
+A page table maintains a mapping of all the logical address to physical address. Not all of the pages are loaded into memory. whenever a request for a logical address is issued (by cpu), we check in the page table to see if corresponding data is loaded in physical memory. If this is not the case, we get a page fault. 
+
+The physical address space is managed by us. Whenever there is a page fault, we load the required memory from the backing store to physical memory. 
+
+Once the data is loaded to one of the frame in physical memory, we store the frame number in the page table. 
+
 
 Flow chart
 -----------------
 
+- address.txt is the list of address. The output is written to a file correct_check.txt
+
+$ ./vmm address.txt 
+
+
 main()
 {
-    inititialize(physical memory, backing store)
+    parse args
+
+    run(args[1]); // input file name
+
+    return;
 }
 
-cpu
+run(string inputfilename)
 {
     initialize vmm;
 
     read address from input;
-    call vmm->translate();
+    call vmm->readByte();
 
     return;
 }
@@ -67,82 +75,37 @@ vmm::initialize()
     initialize backing store
 }
 
-vmm::translate(address)
+vmm::readbyte()
 {
-    split address (pageno, offset)
+    vmm::translate();
+    get frame number
 
-    if(miss == tlb->lookup(pageno))
-    {
-        tlbmiss = true;
-    }
+    form physical address
+    physicalMemory.get(physical address);
 
-    frame = lookup (pageno)
-    if(tlbmiss == true)
-    {
-        tlb->add();
-    }
-
-    remake physical address
-    byte = physical->get(physical address);
-
-    return byte;
-}
-
-vmm::lookup()
-{
-    if(pagefault)
-    {
-        backingStore.get(); // how to you know which page to get(?)
-        update page table
-        update tlb
-    }
-    
     return pagetable->frame;
 }
 
 
-
-====================================
-
-BackingStore
+vmm::translate(address)
 {
-	done
+    lookup tlb;
+
+    if(tlb miss)
+    {
+        lookup page table;
+        if(page fault)
+        {
+            get page from backing store;
+            load it to physical memory;
+            update page table;
+        }
+
+        update tlb table
+    }
+
+    return frame number;
 }
 
-TLB
 
-PageEntry
-{
-
-}
-
-PageTable
-{
-	lookup()
-	addEntry()
-	dumpTable()
-	
-}
-
-CPU
-
-Physical memory
-{
-	// set of frames
-
-	initialize, 
-	copy block
-	get byte
-	set byte
-	replace (not implemented)
-	find victim (not implemented)
-}
-
-Page (need to test)
-
-VMM
-{
-	initialize():
-	translate(address);
-}
-
+PhysicalMemory, BackingStore, TLB, PageTable are simple and provide basic get, put functionality

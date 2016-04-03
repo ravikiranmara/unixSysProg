@@ -27,8 +27,10 @@ using std::vector;
 using std::ifstream;
 using std::ofstream;
 
-/* functions */
+/* functions prototypes */
+void finalize_zlog();
 
+/* reads argv, converts it to a vector of strings */
 vector<string> parseArgs(int argc, char *argv[])
 {
     vector<string> args;
@@ -45,6 +47,7 @@ vector<string> parseArgs(int argc, char *argv[])
     return args;
 }
 
+/* dump args, debugging purpose */
 void dumpArgs(vector<string> args)
 {
     zlog(ZLOG_LOC, "Global::dumpArgs - dump args : %d\n", args.size());
@@ -57,47 +60,31 @@ void dumpArgs(vector<string> args)
     return;
 }
 
-/* we'll refine this a bit more later */
-int init_zlog()
-{
-    /* initialize to stdout */
-    zlog_init_stdout();
 
-    /* initialize to file */
-    //zlog_init("vmm.log");
-
-    /* the output is stored in buffer and flushed
-    periodically. we initialize the thread . zlog-config.h
-    contains the timing value */
-    zlog_init_flush_thread();
-
-    // sample log
-    zlog(ZLOG_LOC, "Global::init_zlog - initialized log params\n");
-
-    return 0;
-}
-
-void finalize_zlog()
-{
-    zlog_finish();
-}
-
+/* main logic. read from input file, use virtual memory manager to translate
+the address, and read the byte */
 int run(string inputfile)
 {
     int rval = status_success;
-    VirtualMemoryManager vmm(BackingStoreFilename);
-    VirtualAddress virtualAddress;
-    PhysicalAddress physicalAddress;
-    Byte byte;
-    string line;
+
+    VirtualMemoryManager vmm(BackingStoreFilename);     /* does memory management */
+    VirtualAddress virtualAddress;                      /* input from file, address to get */
+    PhysicalAddress physicalAddress;                    /* output from vmm. the location of the byte in physical memory */
+    Byte byte;                                          /* contains a single byte of data */
+    string line;                                        /* buffer to read from file */
     int address;
-    char ch;
-    char buffer[1024];
-    int totallookups, pagefaults, pagehits, tlbhits;
+    char ch;                                            /* hack, we need to print in signed char, cout << is not printing in the rquired format */
+    char buffer[1024];                                  /* so we use sprintf to print to buffer and write to file. I'm sorry */
+    int totallookups, pagefaults, pagehits, tlbhits;    /* stats of vmm, which we will print later */
+
 
     /* open input file */
+    zlog(ZLOG_LOC, "Global::run - open input and output files \n");
     ifstream input(inputfile.c_str());
     ofstream output(OutputFilename.c_str());
+
+    /* check if files opened properly */
+    zlog(ZLOG_LOC, "Global::run - check if input file is open\n");
     if(false == input.is_open())
     {
         rval = errno;
@@ -105,7 +92,7 @@ int run(string inputfile)
         goto exit1;
     }
 
-    /* open output file */
+    zlog(ZLOG_LOC, "Global::run - check if output file is open\n");
     if(false == output.is_open())
     {
         rval = errno;
@@ -119,17 +106,17 @@ int run(string inputfile)
         zlog(ZLOG_LOC, "================================================\n");
         address = atoi(line.c_str());
         virtualAddress = (VirtualAddress)address;
+
+        /* vmm call to translate address */
+        zlog(ZLOG_LOC, "Global::run - get byte for address : %d", virtualAddress);
         vmm.readByte(virtualAddress, physicalAddress, byte);
-        /* zlog(ZLOG_LOC, "Global::test_vmm - *********  virtual address : %d, Physical address : %d, data : %d \n",
-                        virtualAddress, physicalAddress, (signed)byte); */
         ch = byte;
 
-        /*cout << "Virtual Address : " << virtualAddress << ", Physical Address : " << physicalAddress
-                << " , Value : " << int(ch) << endl;*/
-
+        /* now print to output and log file */
         sprintf (buffer, "Virtual address: %d Physical address: %d Value: %d\n",
                virtualAddress, physicalAddress, ch);
         output << buffer;
+        zlog(ZLOG_LOC, buffer);
     }
 
     /* lets print stats before exiting */
@@ -137,12 +124,13 @@ int run(string inputfile)
     sprintf(buffer, "Number of Translated Addresses = %d\nPage Faults = %d\nPage Fault Rate = %.3f\nTLB Hits = %d\nTLB Hit Rate = %.3f\n",
                        totallookups, pagefaults, (float)pagefaults/totallookups, tlbhits, (float)tlbhits/totallookups);
     output << buffer;
+    zlog(ZLOG_LOC, buffer);
 
     output.close();
 exit2:
     input.close();
 exit1:
-    return status_success;
+    return rval;
 }
 
 /* main */
@@ -154,11 +142,11 @@ int main(int argc, char* argv[])
 
     try
     {
-        // initialize logging
-        // init_zlog();
-        zlog_init("vmm_trace.log");
+        /* initialize logging */
+        // init_zlog();     /* log to stdout */
+        zlog_init("vmm_trace.log");     /* log to file */
 
-        // get args
+        /*  get args */
         zlog(ZLOG_LOC, "Global::Main - parse args\n");
         args = parseArgs(argc, argv);
         dumpArgs(args);
@@ -168,16 +156,13 @@ int main(int argc, char* argv[])
         {
             zlog(ZLOG_LOC, "Global::Main - Not enough parameters\n");
             zlog(ZLOG_LOC, "Global::Main - %s <input file name>\n", argv[0]);
+            cout << "Error : Not enough parameters\n";
+            cout << "Syntax  - " << argv[0] << " <input file name>" << std::endl;
             goto exit1;
         }
 
-        /* send it to vmm */
-
-
-        /* test backing store */
-        // test_backing(args.at(1));
-        // test_pagetable();
-        run(args[1]);
+        /* run main logic */
+        rval = run(args[1]);
 
         /* update return value */
         rval = status_success;
@@ -203,4 +188,30 @@ exit1:
     finalize_zlog();
 
     return rval;
+}
+
+/**** logging related - ignore ****/
+/* we'll refine this a bit more later */
+int init_zlog()
+{
+    /* initialize to stdout */
+    zlog_init_stdout();
+
+    /* initialize to file */
+    //zlog_init("vmm.log");
+
+    /* the output is stored in buffer and flushed
+    periodically. we initialize the thread . zlog-config.h
+    contains the timing value */
+    zlog_init_flush_thread();
+
+    // sample log
+    zlog(ZLOG_LOC, "Global::init_zlog - initialized log params\n");
+
+    return 0;
+}
+
+void finalize_zlog()
+{
+    zlog_finish();
 }

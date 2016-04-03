@@ -36,6 +36,7 @@ class BackingStore
         return isopen;
     }
 
+    /* normal open, nothing special */
     int openFile(const char *filename)
     {
         int rval = status_success;
@@ -55,6 +56,7 @@ class BackingStore
         return rval;
     }
 
+    /* just normal close, nothing special */
     int closeFile()
     {
         int rval = status_success;
@@ -76,7 +78,8 @@ class BackingStore
         return rval;
     }
 
-    /* assumes that buffer is already allocated with pagesize bytes */
+    /* seeks to the position of file, and grabs a pagesize of data
+        assumes that buffer is already allocated with pagesize bytes */
     int getPage(Page &page, int position, int pagesize)
     {
         int rval = status_success;

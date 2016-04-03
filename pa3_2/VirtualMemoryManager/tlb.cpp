@@ -1,4 +1,9 @@
-/* tlb cache for vmm */
+/* tlb cache for vmm
+    TLB is a list of tlb entries.
+    Each tlb entry is a mapping of "page number => frame number"
+
+    the class provides ways to manages these table entries and provides lookup
+*/
 #ifndef __OSP_VMM_TLB_CPP__
 #define __OSP_VMM_TLB_CPP__
 
@@ -19,6 +24,7 @@ typedef struct TlbEntry
         valid = false;
     }
 
+    /* overload = so its easier to assign */
     void operator=(TlbEntry te)
     {
         this->pageNumber = te.pageNumber;
@@ -32,10 +38,10 @@ typedef struct TlbEntry
 /* tlb table */
 class Tlb
 {
-    vector<TlbEntry> table;
-    int tlbHitCount;
+    vector<TlbEntry> table;     /* table of entries */
+    int tlbHitCount;            /* stats not using */
     int totalNumberOfLookup;
-    int robin;
+    int robin;                  /* counter for round robin replacement policy */
 
   public:
     Tlb()
@@ -43,6 +49,7 @@ class Tlb
         this->initialize();
     }
 
+    /* initialize our table with number of tlb entries */
     int initialize()
     {
         tlbHitCount = 0;
@@ -59,6 +66,7 @@ class Tlb
         TlbEntry tlbEntry;
         bool tlbhit = false;
 
+        /* linear search */
         zlog(ZLOG_LOC, "Tlb::lookup - lookup page : %d\n", pageno);
         for(int i=0; i<NumberOfTlbEntries; i++)
         {
@@ -91,7 +99,7 @@ class Tlb
         return rval;
     }
 
-    /* add entry to tlb */
+    /* add entry to tlb. this is called in case of tlb miss, and we need to update table */
     int addEntry(TlbEntry tlbEntry)
     {
         int rval = status_success;

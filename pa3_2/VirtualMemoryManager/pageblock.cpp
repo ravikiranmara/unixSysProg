@@ -1,3 +1,7 @@
+/*
+    just a chunk of memory, and some fancy ways to get/manage it
+*/
+
 #ifndef __OSP_VMM_PAGEBLOCK_CPP__
 #define __OSP_VMM_PAGEBLOCK_CPP__
 
@@ -9,6 +13,7 @@ class Page
     Byte page[PageSize];
 
   public:
+    /* read data at offset */
     int getByte(const int offset, Byte &byte)
     {
         int rval = status_failure;
@@ -22,6 +27,7 @@ class Page
         return rval;
     }
 
+    /* write data to offset */
     int putByte(const int offset, Byte byte)
     {
         int rval = status_failure;
@@ -35,6 +41,7 @@ class Page
         return rval;
     }
 
+    /* make it easier to mange page */
     int operator=(Page inputPage)
     {
         for(int i=0; i<PageSize; i++)
@@ -55,6 +62,7 @@ class Page
         return status_success;
     }
 
+    /* dump for debug purpose */
     void dumpPage()
     {
         for(int i=0; i<PageSize; i++)

@@ -30,6 +30,10 @@ typedef struct PageEntry
 
 } PageEntry;
 
+/*  a table of page entries. one per logical address page
+    a lookup function to get frame number from page number
+    a some additional functions to manage the table add, update etc
+*/
 class PageTable
 {
     vector<PageEntry> table;
@@ -59,6 +63,7 @@ class PageTable
         }
     }
 
+    /* search in the page table to see if we have a valid entry for page number */
     int lookup(PageNumber pageNumber, PageEntry &pageEntry)
     {
         int rval = status_failure;
@@ -74,6 +79,7 @@ class PageTable
         return rval;
     }
 
+    /* not used, we update instead */
     int addPageEntry(PageEntry pageEntry, PageNumber &pageno)
     {
         int rval = status_success;
@@ -89,6 +95,7 @@ class PageTable
         return rval;
     }
 
+    /* overwrite page */
     int updatePageEntry(PageEntry pageEntry, PageNumber pageno)
     {
         int rval = status_success;

@@ -1,4 +1,15 @@
-/* vmm module for managing page table etc */
+/* vmm module for managing page table etc.
+
+   The main responsibility of virtual memory manager is to manage
+   virtual addresss space (in tandem with memory manager )and translate
+   the virtual address to physical address.
+
+   Additionally we are also performing the read operation in VMM.
+
+   Ideally backing store, physical memory are different entities, that are to
+   be enclosed in a bigger contianer say Computer. To avoid complicating the code, we include
+   it here.
+*/
 
 #ifndef __OSP_VMM_VMM_CPP__
 #define __OSP_VMM_VMM_CPP__
@@ -10,11 +21,12 @@
 
 class VirtualMemoryManager
 {
-    PhysicalMemory physicalMemory;
-    BackingStore backingStore;
-    PageTable pageTable;
-    Tlb tlb;
-    int pagehits;
+    PhysicalMemory physicalMemory;      /* represents RAM, list of frames with data */
+    BackingStore backingStore;          /* represents persistant storage, hard disk */
+    PageTable pageTable;                /* contains logical to physical address mapping */
+    Tlb tlb;                            /* cache for page table */
+
+    int pagehits;                       /* used to keep stats */
     int pagefaults;
     int tlbhits;
     int pagelookups;
@@ -22,22 +34,25 @@ class VirtualMemoryManager
   public:
     VirtualMemoryManager(string backingStoreFile) : backingStore(backingStoreFile.c_str())
     {
+        /* initialize my stats to zero */
         pagehits = 0;
         pagefaults = 0;
         pagelookups = 0;
         tlbhits = 0;
     }
 
+    /* translate virtual address to pysical address. handles tlbmiss, page faults,
+    loads page to physical memory in case of page fault */
     int translate(VirtualAddress address, PhysicalAddress &physicalAddress)
     {
         int rval = status_success;
 
-        PageEntry pageEntry;
-        Page page;
+        PageEntry pageEntry;    /* the page entry from page table. We use this for lookup in page table, and get frame no from it */
+        Page page;              /* in case we need to get page from backing store and add it to physical memory */
         FrameNumber frameno;    /* in case we need to add page to physical memory */
-        PageNumber pageno = -1;
-        int offset = -1;
-        bool pagehit = false;
+        PageNumber pageno = -1; /* page number we will lookkup. get this from virtual address */
+        int offset = -1;        /* offset we will lookkup. get this from virtual address */
+        bool pagehit = false;   /* flags */
         bool tlbhit = false;
 
 
@@ -46,16 +61,20 @@ class VirtualMemoryManager
         pageno = getPageNumberFromLogicalAddress(address);
         offset = getOffsetFromLogicalAddress(address);
 
+        /* we are storing he required frame number in the frameno value, weather we get a hit
+        from tlb, page table or page fault */
+
         /* check in tlb */
         tlb.lookup(pageno, frameno, tlbhit);
         if(true == tlbhit)
         {
+            /* we are done here */
             zlog(ZLOG_LOC, "VirtualMemoryManager::translate - tlbhit !!\n");
             tlbhits++;
         }
         else
         {
-            /* check in page table if failure */
+            /* check in page table tlb miss */
             zlog(ZLOG_LOC, "VirtualMemoryManager::translate- get page entry for page no : %d\n", pageno);
             if(status_success != pageTable.lookup(pageno, pageEntry))
             {
@@ -68,9 +87,12 @@ class VirtualMemoryManager
             zlog(ZLOG_LOC, "VirtualMemoryManager::translate- check for page fault\n");
             if(true == pageEntry.isValid)
             {
+                /* we are done */
                 zlog(ZLOG_LOC, "VirtualMemoryManager::translate- page hit! \n");
                 frameno = pageEntry.frameNumber;
                 pagehit = true;
+
+                /* update counter */
                 pagehits++;
             }
 
@@ -90,8 +112,6 @@ class VirtualMemoryManager
                     goto exit2;
                 }
 
-                //page.dumpPage();
-
                 /* add to physical memory */
                 zlog(ZLOG_LOC, "VirtualMemoryManager::translate- putting the page in physical memory\n");
                 if(status_success != physicalMemory.addPage(page, frameno))
@@ -101,12 +121,13 @@ class VirtualMemoryManager
                     goto exit2;
                 }
 
-                /* update page table */
+                /* update page entry */
                 zlog(ZLOG_LOC, "VirtualMemoryManager::translate- update page Entry \n");
                 pageEntry.frameNumber = frameno;
                 pageEntry.isModified  = false;
                 pageEntry.isValid = true;
 
+                /* add page entry to page table */
                 zlog(ZLOG_LOC, "VirtualMemoryManager::translate- update page table\n");
                 if(status_success != pageTable.updatePageEntry(pageEntry, pageno))
                 {
@@ -132,6 +153,7 @@ class VirtualMemoryManager
                 tlb.addEntry(tlbEntry);
             }
         }
+
         /* page entry contains the frame number required */
         physicalAddress = (frameno << numBitsForFrameOffset) + offset;
 
@@ -140,6 +162,7 @@ class VirtualMemoryManager
         return rval;
     }
 
+    /* uses translate function to get physical address, and reads byte from physcial memory */
     int readByte(VirtualAddress address, PhysicalAddress &physicalAddress, Byte &byte)
     {
         int rval = status_success;
@@ -147,7 +170,7 @@ class VirtualMemoryManager
         /* lookup request add counter */
         pagelookups++;
 
-        /* lookup */
+        /* lookup in tlb, page table to get physical address */
         zlog(ZLOG_LOC, "VirtualMemoryManager::readByte - translate address to get physical address : %d \n", address);
         if(status_failure == this->translate(address, physicalAddress))
         {
@@ -169,6 +192,7 @@ class VirtualMemoryManager
         return rval;
     }
 
+    /* not implemented, not required for assignment */
     int writeByte(VirtualAddress address)
     {
         int rval = status_success;
@@ -176,6 +200,7 @@ class VirtualMemoryManager
         return rval;
     }
 
+    /* just return the counters */
     int getStats (int &totalLookups, int &pagefaults, int &pageHits, int &tlbhits)
     {
         totalLookups = this->pagelookups;
