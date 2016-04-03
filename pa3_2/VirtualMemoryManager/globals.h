@@ -38,31 +38,39 @@ const int numBitsForPageOffset = log2(PageSize);
 const int numBitsForFrameOffset = log2(FrameSize);
 
 /* bitmasks (change if page memory size changes)*/
-const VirtualAddress VirtualAddressOffsetMask = (Byte)0xFF;
-const PhysicalAddress PhysicalAddressOffsetMask = (Byte)0xFF;
+const VirtualAddress VirtualAddressOffsetMask = 0xFF;
+const PhysicalAddress PhysicalAddressOffsetMask = 0xFF;
 
-const VirtualAddress pageNumMask = (Byte)0xFF00;
-const PhysicalAddress frameNumMaks = (Byte)0xFF00;
+const VirtualAddress pageNumMask = 0xFF00;
+const PhysicalAddress frameNumMaks = 0xFF00;
 
 /* bitmask helper */
 int getOffsetFromPhysicalAddress(PhysicalAddress address)
 {
-    return address & PhysicalAddressOffsetMask;
+    int offset = address & PhysicalAddressOffsetMask;
+    zlog(ZLOG_LOC, "globals - phy offset - %d\n", offset);
+    return offset;
 }
 
 int getOffsetFromLogicalAddress(VirtualAddress address)
 {
-    return address & VirtualAddressOffsetMask;
+    int offset = address & VirtualAddressOffsetMask;
+    zlog(ZLOG_LOC, "globals - vir offset - %d\n", offset);
+    return offset;
 }
 
-int getFrameNumberFromPhysicalAddress(PhysicalAddress address)
+FrameNumber getFrameNumberFromPhysicalAddress(PhysicalAddress address)
 {
-    return (address & frameNumMaks) >> numBitsForFrameNo;
+    FrameNumber fn = (address & frameNumMaks) >> numBitsForFrameOffset;
+    zlog(ZLOG_LOC, "globals - phy fn - %d\n", fn);
+    return fn;
 }
 
-int getPageNumberFromLogicalAddress(VirtualAddress address)
+PageNumber getPageNumberFromLogicalAddress(VirtualAddress address)
 {
-    return (address & pageNumMask) >> numBitsForPageNo;
+    PageNumber fn = (address & pageNumMask) >> numBitsForPageOffset;
+    zlog(ZLOG_LOC, "globals - page fn - %d : %d : %d\n", address, pageNumMask, fn);
+    return fn;
 }
 
 #endif

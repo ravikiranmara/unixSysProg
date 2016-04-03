@@ -6,11 +6,12 @@
 #include "common_includes.h"
 #include <pthread.h>
 
-#include "globals.h"
 #include "zlog.h"
+#include "globals.h"
 #include "backingstore.cpp"
 #include "physicalmemory.cpp"
 #include "pagetable.cpp"
+#include "vmm.cpp"
 
 /* using std */
 using std::cout;
@@ -180,6 +181,30 @@ void test_pagetable()
 }
 
 
+int test_vmm(string backingstore)
+{
+    VirtualMemoryManager vmm(backingstore);
+    VirtualAddress virtualAddress;
+    PhysicalAddress physicalAddress;
+    Byte byte;
+
+    vector<uint16_t> addressList;
+    addressList.push_back(16916);
+    addressList.push_back(62493);
+    addressList.push_back(30198);
+    addressList.push_back(53683);
+    addressList.push_back(40185);
+
+    for(int i=0; i<addressList.size(); i++)
+    {
+        virtualAddress = addressList[i];
+        vmm.readByte(virtualAddress, physicalAddress, byte);
+        zlog(ZLOG_LOC, "Global::test_vmm - *********  virtual address : %d, Physical address : %d, data : %d \n",
+                    virtualAddress, physicalAddress, (signed)byte);
+    }
+    return status_success;
+}
+
 /* main */
 int main(int argc, char* argv[])
 {
@@ -211,7 +236,8 @@ int main(int argc, char* argv[])
 
         /* test backing store */
         // test_backing(args.at(1));
-        test_pagetable();
+        // test_pagetable();
+        test_vmm(args[1]);
 
         /* update return value */
         rval = status_success;

@@ -99,7 +99,6 @@ class PageTable
         return rval;
     }
 
-
     /* frame replacement policy */
     int findVictim(PageNumber &victim)
     {

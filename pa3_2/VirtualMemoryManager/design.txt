@@ -113,7 +113,7 @@ TLB
 
 PageEntry
 {
-	
+
 }
 
 PageTable
@@ -121,6 +121,7 @@ PageTable
 	lookup()
 	addEntry()
 	dumpTable()
+	
 }
 
 CPU
@@ -140,5 +141,8 @@ Physical memory
 Page (need to test)
 
 VMM
-
+{
+	initialize():
+	translate(address);
+}
 

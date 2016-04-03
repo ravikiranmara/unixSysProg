@@ -46,6 +46,7 @@ class PhysicalMemory
         /* get byte */
         zlog(ZLOG_LOC, "PhysicalMemory::readByte - getting byte at frame-offset  (%d - %d)\n", framenum, offset);
         rval = frames[framenum].getByte(offset, byte);
+        // frames[framenum].dumpPage();
 
         return rval;
     }
