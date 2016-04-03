@@ -27,9 +27,6 @@ using std::vector;
 using std::ifstream;
 using std::ofstream;
 
-/* extern */
-
-
 /* functions */
 
 vector<string> parseArgs(int argc, char *argv[])
@@ -95,6 +92,8 @@ int run(string inputfile)
     string line;
     int address;
     char ch;
+    char buffer[1024];
+    int totallookups, pagefaults, pagehits, tlbhits;
 
     /* open input file */
     ifstream input(inputfile.c_str());
@@ -128,9 +127,16 @@ int run(string inputfile)
         /*cout << "Virtual Address : " << virtualAddress << ", Physical Address : " << physicalAddress
                 << " , Value : " << int(ch) << endl;*/
 
-        printf ("Virtual address: %d Physical address: %d Value: %d\n",
+        sprintf (buffer, "Virtual address: %d Physical address: %d Value: %d\n",
                virtualAddress, physicalAddress, ch);
+        output << buffer;
     }
+
+    /* lets print stats before exiting */
+    vmm.getStats(totallookups, pagefaults, pagehits, tlbhits);
+    sprintf(buffer, "Number of Translated Addresses = %d\nPage Faults = %d\nPage Fault Rate = %.3f\nTLB Hits = %d\nTLB Hit Rate = %.3f\n",
+                       totallookups, pagefaults, (float)pagefaults/totallookups, tlbhits, (float)tlbhits/totallookups);
+    output << buffer;
 
     output.close();
 exit2:

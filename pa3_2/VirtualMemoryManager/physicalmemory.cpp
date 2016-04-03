@@ -12,7 +12,7 @@ class PhysicalMemory
 {
     /* list of frames */
     vector<Page> frames;
-    int frameno;
+    FrameNumber frameno;
 
   public:
     PhysicalMemory()
@@ -35,7 +35,7 @@ class PhysicalMemory
     int readByte(PhysicalAddress address, Byte &byte)
     {
         int rval = status_success;
-        int framenum = -1;
+        FrameNumber framenum = -1;
         int offset = -1;
 
         /* split physical address byte */
@@ -74,10 +74,10 @@ class PhysicalMemory
     }
 
     /* add a page to a frame in physical memory */
-    int addPage(Page page, int &frameno)
+    int addPage(Page page, PageNumber &frameno)
     {
         int rval = status_success;
-        int victim = -1;
+        FrameNumber victim = -1;
 
         /* get victim page */
         zlog(ZLOG_LOC, "PhysicalMemory::addPage - find victim page\n");
@@ -117,7 +117,7 @@ class PhysicalMemory
     }
 
     /* frame replacement policy */
-    int findVictim(int &victim)
+    int findVictim(FrameNumber &victim)
     {
         /* use whatever algo we want, LRU, MRU etc */
         /* currently this is round robin */
