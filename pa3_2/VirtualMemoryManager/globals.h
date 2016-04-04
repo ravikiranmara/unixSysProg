@@ -17,8 +17,8 @@ const int status_success = 0;
 const int status_failure = -1; /* there has to be a better way */
 
 /* backing store filename */
-const string BackingStoreFilename = "BACKING_STORE.bin";
-const string OutputFilename = "correct_check.txt";
+/* const string BackingStoreFilename = "BACKING_STORE.bin"; // we are taking this as input */
+const string OutputFilename = "correct.txt";
 
 /* address representations */
 typedef uint16_t VirtualAddress;    /* represents logical address (8bit page no + 8 bit offset) */

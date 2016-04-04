@@ -63,11 +63,11 @@ void dumpArgs(vector<string> args)
 
 /* main logic. read from input file, use virtual memory manager to translate
 the address, and read the byte */
-int run(string inputfile)
+int run(vector<string> args)
 {
     int rval = status_success;
 
-    VirtualMemoryManager vmm(BackingStoreFilename);     /* does memory management */
+    VirtualMemoryManager vmm(args[1]);     /* does memory management */
     VirtualAddress virtualAddress;                      /* input from file, address to get */
     PhysicalAddress physicalAddress;                    /* output from vmm. the location of the byte in physical memory */
     Byte byte;                                          /* contains a single byte of data */
@@ -80,7 +80,7 @@ int run(string inputfile)
 
     /* open input file */
     zlog(ZLOG_LOC, "Global::run - open input and output files \n");
-    ifstream input(inputfile.c_str());
+    ifstream input(args[2].c_str());                    /* input file of addresss */
     ofstream output(OutputFilename.c_str());
 
     /* check if files opened properly */
@@ -88,7 +88,7 @@ int run(string inputfile)
     if(false == input.is_open())
     {
         rval = errno;
-        zlog(ZLOG_LOC, "unable to open input file : %s - %s", inputfile.c_str(), strerror(rval));
+        zlog(ZLOG_LOC, "unable to open input file : %s - %s", args[2].c_str(), strerror(rval));
         goto exit1;
     }
 
@@ -152,17 +152,17 @@ int main(int argc, char* argv[])
         dumpArgs(args);
 
         /* if args count is not sufficient throw error and exit */
-        if(argc < 2)
+        if(argc < 3)
         {
             zlog(ZLOG_LOC, "Global::Main - Not enough parameters\n");
-            zlog(ZLOG_LOC, "Global::Main - %s <input file name>\n", argv[0]);
+            zlog(ZLOG_LOC, "Global::Main - %s <BackingStoreFile> <input file name>\n", argv[0]);
             cout << "Error : Not enough parameters\n";
             cout << "Syntax  - " << argv[0] << " <input file name>" << std::endl;
             goto exit1;
         }
 
         /* run main logic */
-        rval = run(args[1]);
+        rval = run(args);
 
         /* update return value */
         rval = status_success;
