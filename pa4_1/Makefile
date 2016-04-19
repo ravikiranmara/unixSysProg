@@ -8,7 +8,7 @@ OBJECTS=scheduler.o worker.o list.o smp5_tests.o testrunner.o
 all: $(EXEC)
 
 $(EXEC): $(OBJECTS)
-	$(CC) $(LINKOPTS) -o $@ $^
+	$(CC) -o $@ $^ $(LINKOPTS) 
 
 %.o:%.c
 	$(CC) $(CCOPTS) -o $@ $^

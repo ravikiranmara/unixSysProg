@@ -13,7 +13,7 @@
  * define the extern global variables here.
  */
 sem_t		queue_sem;	/* semaphore for scheduler queue */
-thread_info_list sched_queue; /* list of current workers */
+thread_info_list sched_queue;           /* list of current workers */
 
 static int quit = 0;
 static timer_t timer;
@@ -23,7 +23,7 @@ static long run_times;
 static int completed = 0;
 static int thread_count = 0;
 
-static void exit_error(int); /* helper function. */
+static void exit_error(int);            /* helper function. */
 static void wait_for_queue();
 
 /*******************************************************************************
@@ -41,6 +41,12 @@ static void wait_for_queue();
  */
 void update_run_time(thread_info_t *info) {
         /* TODO: implement this function */
+
+        /* decrease by 1 quanta */
+        info->quanta -= 1;
+
+        /* add to runtime */
+        info->run_time += time_difference(&(info->suspend_time), &(info->resume_time));
 }
 
 /*
@@ -49,12 +55,16 @@ void update_run_time(thread_info_t *info) {
  */
 void update_wait_time(thread_info_t *info) {
         /* TODO: implement this function */
+        /* add wait time */
+        info->wait_time += time_difference(&(info->resume_time), &(info->suspend_time));
 }
 
 
 
 static void init_sched_queue(int queue_size)
 {
+    struct sigevent sige;
+
 	/* set up a semaphore to restrict access to the queue */
 	sem_init(&queue_sem, 0, queue_size);
 
@@ -63,7 +73,16 @@ static void init_sched_queue(int queue_size)
 	pthread_mutex_init(&sched_queue.lock, NULL);
 
 	/* TODO: initialize the timer */
+    sige.sigev_notify = SIGEV_SIGNAL;
+    sige.sigev_signo = SIGALRM;
 
+    if(-1 == timer_create(CLOCK_REALTIME, &sige, &timer))
+    {
+        perror("unable to create timer");
+        exit(1);
+    }
+
+    return ;
 }
 
 /*
@@ -76,6 +95,10 @@ static void resume_worker(thread_info_t *info)
 	/*
 	 * TODO: signal the worker thread that it can resume
 	 */
+    pthread_kill(info->thrid, SIGUSR2);
+
+    /* update timer */
+    clock_gettime(CLOCK_REALTIME, &(info->resume_time));
 
 	/* update the wait time for the thread */
 	update_wait_time(info);
@@ -85,13 +108,15 @@ static void resume_worker(thread_info_t *info)
 /*send a signal to the thread, telling it to kill itself*/
 void cancel_worker(thread_info_t *info)
 {
-
-	/* TODO: send a signal to the thread, telling it to kill itself*/
+    /* TODO: send a signal to the thread, telling it to kill itself*/
+    pthread_kill(info->thrid, SIGTERM);
 
 	/* Update global wait and run time info */
 	wait_times += info->wait_time;
 	run_times += info->run_time;
 	completed++;
+
+    //printf("runtime - %lu, waitime - %lu \n", run_times, wait_times);
 
 	/* Update schedule queue */
 	leave_scheduler_queue(info);
@@ -110,14 +135,18 @@ void cancel_worker(thread_info_t *info)
  */
 static void suspend_worker(thread_info_t *info)
 {
+    int whatgoeshere = 0;
 
-        int whatgoeshere = 0;
 	printf("Scheduler: suspending %lu.\n", info->thrid);
+
+    /* update time for calc runtime */
+    clock_gettime(CLOCK_REALTIME, &(info->suspend_time));
 
 	/*update the run time for the thread*/
 	update_run_time(info);
 
 	/* TODO: Update quanta remaining. */
+	whatgoeshere = info->quanta;        /* when quanta is positive, suspend. if zero, cancel */
 
 	/* TODO: decide whether to cancel or suspend thread */
 	if(whatgoeshere) {
@@ -125,12 +154,14 @@ static void suspend_worker(thread_info_t *info)
 	   * Thread still running: suspend.
 	   * TODO: Signal the worker thread that it should suspend.
 	   */
+	   pthread_kill(info->thrid, SIGUSR1);
 
 	  /* Update Schedule queue */
 	  list_remove(&sched_queue,info->le);
 	  list_insert_tail(&sched_queue,info->le);
 	} else {
 	  /* Thread done: cancel */
+
 	  cancel_worker(info);
 	}
 }
@@ -156,6 +187,8 @@ void timer_handler()
 {
 	thread_info_t *info = 0;
 
+    // printf("rkp:: timer_handler called\n");
+
 	/* once the last worker has been removed, we're done. */
 	if (list_size(&sched_queue) == 0) {
 		quit = 1;
@@ -178,12 +211,7 @@ void timer_handler()
 		quit = 1;
 }
 
-void sigalarm_handler(int sig)
-{
-    timer_handler();
-}
-
-int initsignal(int sig, sigset_t *newsigmask, struct sigaction *action, action.sa_handler handler)
+int initsignal(int sig, sigset_t *newsigmask, struct sigaction *action)
 {
     if (sigemptyset(newsigmask) == -1)
     {
@@ -192,14 +220,13 @@ int initsignal(int sig, sigset_t *newsigmask, struct sigaction *action, action.s
     }
 
 
-    if(-1 == sigaddset(sig, newsigmask))
+    if(-1 == sigaddset(newsigmask, sig))
     {
-        perror("Unable to add signal %d : ", sig);
+        perror("Unable to add signal ");
         exit(errno);
     }
 
     action->sa_mask = *newsigmask;
-    action->sa_handler = handler;
     action->sa_flags = 0;
 
     return 0;
@@ -219,23 +246,48 @@ void setup_sig_handlers()
     /* Setup timer handler for SIGALRM signal in scheduler */
 	/* sigalarm => timer_handler();  => will send sigusr2 to worker */
 
-    initsignal(SIGALRM, &newsigmask, &action, timer_handler);
+    initsignal(SIGALRM, &newsigmask, &action);
+    action.sa_handler = timer_handler;
     sigaction(SIGALRM, &action, NULL);
 
 	/* Setup cancel handler for SIGTERM signal in workers */
 	/* sigusr => cancel worker */
-    initsignal(SIGTERM, &newsigmask, &action, cancel_thread);
+    initsignal(SIGTERM, &newsigmask, &action );
+    action.sa_handler = cancel_thread;
     sigaction(SIGTERM, &action, NULL);
 
 
 	/* Setup suspend handler for SIGUSR1 signal in workers */
 	/* sigusr1 => suspend_worker();*/
 
-    initsignal(SIGUSR1, &newsigmask, &action, suspend_thread);
+    initsignal(SIGUSR1, &newsigmask, &action);
+    action.sa_handler = suspend_thread;
     sigaction(SIGUSR1, &action, NULL);
 
-    /* update signal mask */
+    /* initialize signal mask */
+    if (sigemptyset(&newsigmask) == -1)
+    {
+        perror("Unable to initialize signal mask\n");
+        exit(errno);
+    }
 
+    sigaddset(&newsigmask, SIGALRM);
+    sigaddset(&newsigmask, SIGUSR1);
+
+    /* set mask on proc */
+    if(-1 == sigprocmask(SIG_UNBLOCK, &newsigmask, NULL))
+    {
+        perror("unable to apply mask : ");
+        exit(errno);
+    }
+
+    sigemptyset(&newsigmask);
+    sigaddset(&newsigmask, SIGTERM);
+    sigaddset(&newsigmask, SIGUSR2);
+    sigprocmask(SIG_BLOCK, &newsigmask, NULL);
+
+
+    return;
 }
 
 /*******************************************************************************
@@ -308,7 +360,8 @@ static void create_workers(int thread_count, int *quanta)
 		pthread_detach(info->thrid);
 
 		/* TODO: initialize the time variables for each thread for performance evalution*/
-
+		clock_gettime(CLOCK_REALTIME, &(info->resume_time));
+		clock_gettime(CLOCK_REALTIME, &(info->suspend_time));
 	}
 }
 
@@ -317,9 +370,21 @@ static void create_workers(int thread_count, int *quanta)
  */
 static void *scheduler_run(void *unused)
 {
+    struct itimerspec newval, oldval;
+
 	wait_for_queue();
 
 	/* TODO: start the timer */
+	newval.it_value.tv_sec = 1;
+	newval.it_value.tv_nsec = 0;
+	newval.it_interval.tv_sec = 1;
+	newval.it_interval.tv_nsec = 0;
+
+	if(-1 == timer_settime(timer, 0, &newval, &oldval))
+	{
+        perror("Unable to set timer");
+        exit(errno);
+	}
 
 	/*keep the scheduler thread alive*/
 	while( !quit )
