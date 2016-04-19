@@ -161,7 +161,6 @@ static void suspend_worker(thread_info_t *info)
 	  list_insert_tail(&sched_queue,info->le);
 	} else {
 	  /* Thread done: cancel */
-
 	  cancel_worker(info);
 	}
 }
