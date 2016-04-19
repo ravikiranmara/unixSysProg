@@ -1,0 +1,144 @@
+Program -- setup alarm --> System --- SIGALRM ---> Scheuduler --- SIGTERM, SIGUSR1 SIGUSR2 ---> Worker  
+
+Scheduler 
+    - interval timer
+    - time slice - pick a thread
+    - scheduler queue
+    - worker enters and leaves queue
+
+    >> we setup a timer for the process. The system will signal every a time slice is over. As a handler to that time slice, we will ask the scheuler to run
+    >> the scheuler will do scheduler job
+        - interrupt the current thread
+        - check if the thread is completed execution and move it out of scheuler queue
+        - check for new process to add to queue
+        - set alarm
+        - schedule new process to run
+
+    >> SIGALRM - 
+        SIGUSR1, SIGUSR2
+        SIGTERM
+
+? who kicks the worker out of queue? Scheuduler check if the last process has no time left
+> Worker maintians how much time is allocated and how much time is remaining
+? who admits the worker to the queue? 
+
+======================
+
+main()
+{
+    setup_sig_handlers();
+
+    init_sched_queue();
+
+    start_scheduler(); // scheduler_run();
+
+    create_workers();  // start_worker();
+
+    // wait
+
+    return;
+}
+
+void setup_sig_handlers()
+{
+    initial setup for process
+
+    todo : sigalarm
+    todo : sigeterm
+    todo : sigusr1
+}
+
+
+init_sched_queue()
+{
+
+    todo : timer
+}
+
+
+start_scheduler
+{
+    create scheduler thread : scheduler_run()
+}
+
+scheduler_run()
+{
+    todo : start timer
+
+    keep running till end
+}
+
+create_workers()
+{
+    todo: init worker timings
+
+    start_worker();
+}
+
+=====================================
+
+start_worker()
+{
+    todo: block sigalarm and siguser2
+    todo: unblock sigusr1
+
+    enter queue
+
+    // init state is suspended
+    suspend thread()
+
+    do work
+}
+
+suspend_thread()
+{
+    todo:handle sigusr1 here
+}
+
+
+// handler to sigterm => cancel_thread()
+
+// leave scheduler queue()?
+
+====================================
+
+/* unaccounted functions */
+
+
+// should be called at the end of each time slice
+update_run_time(thread_info_t)
+update_wait_time(thread_info_t)
+
+// scheduler to worker
+resume_worker() => update_wait_time();
+cancel_worker() => leave_scheduler_queue(), 
+{
+    send signal to thread to die();
+}
+suspend_worker(thread_info_t) => update_run_time()
+{
+    todo: signal thrad to suspend)()
+
+}
+
+
+// timer
+timer_handler()
+{
+    current suspend_worker(); 
+
+    get next worker();
+}
+
+=======================================
+
+
+Implementation
+------------------------
+
+>> main()
+{
+    // nothing to do here
+}
+
+void 
