@@ -87,7 +87,7 @@ class BackingStore
         char tbuf[pagesize];
 
         // seek to file
-        zlog(ZLOG_LOC, "BackingStore::getPage - seeking file : %d\n", position);
+        // zlog(ZLOG_LOC, "BackingStore::getPage - seeking file : %d\n", position);
         if(-1 == lseek(file, position, SEEK_SET))
         {
             rval = errno;
@@ -96,7 +96,7 @@ class BackingStore
         }
 
         // read file
-        zlog(ZLOG_LOC, "BackingStore::getPage - attempting to read\n");
+        // zlog(ZLOG_LOC, "BackingStore::getPage - attempting to read\n");
         if(status_success == status)
         {
             if(-1 == read(file, &tbuf, pagesize))
@@ -106,11 +106,11 @@ class BackingStore
                 zlog(ZLOG_LOC, "BackingStore::getPage - Unable to read from file : %s\n", strerror(errno));
             }
 
-            zlog(ZLOG_LOC, "Copy buffer to page\n");
+            zlog(ZLOG_LOC, "BackingStore::getPage - Copy buffer to page\n");
             page = tbuf;
         }
 
-        zlog(ZLOG_LOC, "BackingStore::getPage - exit with status (%d)\n", rval);
+        // zlog(ZLOG_LOC, "BackingStore::getPage - exit with status (%d)\n", rval);
         return rval;
     }
 };

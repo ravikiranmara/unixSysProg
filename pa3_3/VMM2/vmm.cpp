@@ -50,18 +50,20 @@ class VirtualMemoryManager
         int rval = status_success;
 
         PageEntry pageEntry;    /* the page entry from page table. We use this for lookup in page table, and get frame no from it */
-        PageEntry victimEntry; 
+        PageEntry victimEntry;
         Page page;              /* in case we need to get page from backing store and add it to physical memory */
         FrameNumber frameno;    /* in case we need to add page to physical memory */
         PageNumber pageno = -1; /* page number we will lookkup. get this from virtual address */
-        PageNumber victim = -1;
+        FrameNumber frameVictim = -1;
+        PageNumber pageVictim = -1;
+
         int offset = -1;        /* offset we will lookkup. get this from virtual address */
         bool pagehit = false;   /* flags */
         bool tlbhit = false;
 
 
         /* break address to page no offset */
-        zlog(ZLOG_LOC, "VirtualMemoryManager::translate- get page number and offset\n");
+        //zlog(ZLOG_LOC, "VirtualMemoryManager::translate- get page number and offset\n");
         pageno = getPageNumberFromLogicalAddress(address);
         offset = getOffsetFromLogicalAddress(address);
 
@@ -73,7 +75,8 @@ class VirtualMemoryManager
         if(true == tlbhit)
         {
             /* we are done here */
-            zlog(ZLOG_LOC, "VirtualMemoryManager::translate - tlbhit !!\n");
+            zlog(ZLOG_LOC, "VirtualMemoryManager::translate - tlb hit !!\n");
+            pageTable.lookup(pageno, pageEntry);
             tlbhits++;
         }
         else
@@ -88,7 +91,7 @@ class VirtualMemoryManager
             }
 
             /* check if this is a page fault */
-            zlog(ZLOG_LOC, "VirtualMemoryManager::translate- check for page fault\n");
+            // zlog(ZLOG_LOC, "VirtualMemoryManager::translate- check for page fault\n");
             if(true == pageEntry.isValid)
             {
                 /* we are done */
@@ -115,61 +118,61 @@ class VirtualMemoryManager
                     rval = status_failure;
                     goto exit2;
                 }
-                
+
                 /* check if we have a vacant memory */
-                if(workingSet.isFreeFrame()) 
+                if(workingSet.isFreeFrame())
                 {
                     frameno = workingSet.getFreeFrame();
                 }
                 else
                 {
                     /* get victim page no */
-                    pageTable.findVictim(victim);
-                    pageTable.lookup(victim, victimEntry);
-                    frameno = victimEntry.frameNumber;
-                    
+                    pageTable.findVictim(frameVictim);
+                    pageTable.rlookup(frameVictim, pageVictim, victimEntry);
+                    frameno = frameVictim;
+
                     /* make victim invalid */
-                    if(victimEntry.isValid == true) 
+                    if(victimEntry.isValid == true)
                     {
                         victimEntry.isValid = false;
                         zlog(ZLOG_LOC, "VirtualMemoryManager::translate- update page table victim\n");
-                        if(status_success != pageTable.updatePageEntry(victimEntry, victim))
+                        if(status_success != pageTable.updatePageEntry(victimEntry, pageVictim))
                         {
                             zlog(ZLOG_LOC, "VirtualMemoryManager::translate- unable to add entry to page table\n");
                             rval = status_failure;
                             goto exit2;
                         }
-                        
+
                         zlog(ZLOG_LOC, "VirtualMemoryManager::translate- invalidate entry in tlb\n");
                         tlb.invalidate(victimEntry.frameNumber);
                     }
                 }
-                
+
                 /* add to physical memory */
-                zlog(ZLOG_LOC, "VirtualMemoryManager::translate- putting the page in physical memory at victim(%d) : %d\n", victim, frameno);
+                zlog(ZLOG_LOC, "VirtualMemoryManager::translate- putting the page in physical memory at victim : %d\n", frameno);
                 if(status_success != physicalMemory.addPage(page, frameno))
                 {
                     zlog(ZLOG_LOC, "VirtualMemoryManager::translate- unable to add page to physical memory\n");
                     rval = status_failure;
                     goto exit2;
                 }
-                
+
                 /* update page entry */
-                zlog(ZLOG_LOC, "VirtualMemoryManager::translate- update page Entry \n");
+                // zlog(ZLOG_LOC, "VirtualMemoryManager::translate- update page Entry \n");
                 pageEntry.frameNumber = frameno;
                 pageEntry.isModified  = false;
                 pageEntry.isValid = true;
 
                 /* add page entry to page table */
-                zlog(ZLOG_LOC, "VirtualMemoryManager::translate- update page table lookup\n");
+                // zlog(ZLOG_LOC, "VirtualMemoryManager::translate- update page table lookup\n");
                 if(status_success != pageTable.updatePageEntry(pageEntry, pageno))
                 {
                     zlog(ZLOG_LOC, "VirtualMemoryManager::translate- unable to add entry to page table\n");
                     rval = status_failure;
                     goto exit2;
                 }
-                
-                zlog(ZLOG_LOC, "VirtualMemoryManager::translate- lookup page table again\n");
+
+                // zlog(ZLOG_LOC, "VirtualMemoryManager::translate- lookup page table again\n");
                 frameno = pageEntry.frameNumber;
                 pagehit = true;
             }

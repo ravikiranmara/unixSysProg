@@ -15,6 +15,7 @@ typedef struct PageEntry
     bool isValid;
     bool isModified;
     int accessno;
+    int fifono; 
     FrameNumber frameNumber;
 
     void dump()
@@ -39,8 +40,10 @@ typedef struct PageEntry
 class PageTable
 {
     vector<PageEntry> table;
+    FrameNumber frameno;
     PageNumber pageno;
     int accessno;
+    int fifono;
     ReplacementStrategy strategy;
 
   public:
@@ -55,11 +58,12 @@ class PageTable
         table.empty();
         table.resize(NumberOfPageInVm);
         pageno = -1;
-        this->strategy = RoundRobin;
+        frameno = -1;
+        this->strategy = Fifo;
         this->invalidateTable();
     }
-    
-    int setStrategy(ReplacementStrategy strategy) 
+
+    int setStrategy(ReplacementStrategy strategy)
     {
         this->strategy = strategy;
     }
@@ -68,47 +72,50 @@ class PageTable
     void invalidateTable()
     {
         this->accessno = 0;
+        this->fifono = 0;
         for(int i=0; i<table.size(); i++)
         {
             table[i].isValid = false;
             table[i].frameNumber = i;
             table[i].accessno = 0;
+            table[i].fifono = 0;
         }
     }
-    
-    void accessPageRoundRobin(PageNumber pageNumber)
+
+    void accessPageFifo(PageNumber pageNumber)
     {
         return;
     }
 
     void accessPageLRU(PageNumber pageNumber)
     {
-        table[pageNumber].accessno = accessno; 
+        table[pageNumber].accessno = accessno;
         accessno++;
+        zlog(ZLOG_LOC, "PageEntry::accessPageLru(%d)\n", accessno);
         return;
     }
-    
+
     /* book keeping when page hit */
-    int accessPage(PageNumber pageNumber) 
+    int accessPage(PageNumber pageNumber)
     {
         switch(strategy)
         {
-            case RoundRobin: 
-                        accessPageRoundRobin(pageNumber);
+            case Fifo:
+                        accessPageFifo(pageNumber);
                         break;
-                        
+
             case LRU:
                         accessPageLRU(pageNumber);
                         break;
-                        
-            default: 
+
+            default:
                         zlog(ZLOG_LOC, "PageEntry::findVictim: unknown option\n");
                         break;
         }
-        
+
         return status_success;
     }
-    
+
     /* search in the page table to see if we have a valid entry for page number */
     int lookup(PageNumber pageNumber, PageEntry &pageEntry)
     {
@@ -123,6 +130,21 @@ class PageTable
         }
 
         /* return page entry */
+        return rval;
+    }
+
+    int rlookup(FrameNumber frameNumber, PageNumber &pageno, PageEntry &pageEntry) {
+        int rval = status_failure;
+
+        for(int i=0; i<table.size(); i++) {
+             PageEntry &pe = table[i];
+            if(pe.frameNumber == frameNumber && pe.isValid == true) {
+                 pageEntry = pe;
+                 pageno = i;
+                 rval = status_success;
+             }
+        }
+
         return rval;
     }
 
@@ -150,62 +172,80 @@ class PageTable
         /* update page  jjj*/
         table[pageno] = pageEntry;
         table[pageno].accessno = accessno;
+        table[pageno].fifono = fifono;
+        accessno++; fifono++;
 
         return rval;
     }
 
     /* frame replacement policy */
-    int findVictim(PageNumber &victim)
+    int findVictim(FrameNumber &victim)
     {
         switch(strategy)
         {
-            case RoundRobin: 
-                        findVictimByRoundRobin(victim);
+            case Fifo:
+                        findVictimByFifo(victim);
                         break;
-                        
+
             case LRU:
                         findVictimByLRU(victim);
                         break;
-                        
-            default: 
+
+            default:
                         zlog(ZLOG_LOC, "PageEntry::findVictim: unknown option\n");
                         victim = -1;
                         break;
         }
-        
+
         return status_success;
     }
 
-    int findVictimByLRU (PageNumber &victim)
+    int findVictimByLRU (FrameNumber &victim)
     {
         /* use whatever algo we want, LRU, MRU etc */
         /* currently this is round robin */
-        int min = INT_MAX;
-        int pageno = 0;
-        
+        int min = accessno+1;
+        int frameno = 0;
+        int pageno = -1;
+
         for(int i=0; i<table.size(); i++) {
             if(true == table[i].isValid) {
                 if(table[i].accessno < min) {
-                    min = table[i].accessno;
-                    pageno = i;
+                   min = table[i].accessno;
+                   frameno = table[i].frameNumber;
+                   pageno = i;
                 }
             }
         }
-        
-        victim = pageno;
-        zlog(ZLOG_LOC, "PageEntry::findVictimByLRU (%d) : Pageno %d, victim %d, lastaccess %d\n", 
-                this->accessno, pageno, victim, min);
+
+        victim = frameno;
+        zlog(ZLOG_LOC, "PageEntry::findVictimByLRU : Pageno %d, frameno %d, victim %d, lastaccess %d\n",
+                pageno, table[pageno].frameNumber, victim, table[pageno].accessno);
 
         return status_success;
     }
-    
-    int findVictimByRoundRobin(PageNumber &victim)
+
+    int findVictimByFifo(FrameNumber &victim)
     {
-        /* use whatever algo we want, LRU, MRU etc */
+                /* use whatever algo we want, LRU, MRU etc */
         /* currently this is round robin */
-        pageno  = (pageno + 1) % NumberOfPageInVm;
-        victim = pageno;
-        zlog(ZLOG_LOC, "PageEntry::findVictimByRoundRobin : Pageno %d, victim %d\n", pageno, victim);
+        int min = fifono+1;
+        int frameno = 0;
+        int pageno = -1;
+
+        for(int i=0; i<table.size(); i++) {
+            if(true == table[i].isValid) {
+                if(table[i].fifono < min) {
+                   min = table[i].fifono;
+                   frameno = table[i].frameNumber;
+                   pageno = i;
+                }
+            }
+        }
+
+        victim = frameno;
+        zlog(ZLOG_LOC, "PageEntry::findVictimByFifo : Pageno %d, frameno %d, victim %d, lastinsert %d\n",
+                pageno, table[pageno].frameNumber, victim, table[pageno].fifono);
 
         return status_success;
     }

@@ -1,6 +1,6 @@
 # compiler and flags
 CC=g++
-CFLAGS= -Wno-write-strings
+CFLAGS= -Wno-write-strings -std=c++11
 
 all:
 	$(CC) -c -pthread -Wall zlog.c -o zlog.obj

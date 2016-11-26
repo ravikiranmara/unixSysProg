@@ -68,9 +68,9 @@ int run(vector<string> args)
     int rval = status_success;
 
     ReplacementStrategy strategy;
-    if(0 == args[3].compare("rr")) { strategy = RoundRobin; }
+    if(0 == args[3].compare("fifo")) { strategy = Fifo; }
 else if (0 == args[3].compare("lru")) { strategy = LRU; }
-    else { cout << "Invalid Input for strategy. Choose between {rr or lru}"; }
+    else { cout << "Invalid Input for strategy. Choose between {fifo or lru}"; }
     
     VirtualMemoryManager vmm(args[1].c_str(), strategy);     /* does memory management */
     VirtualAddress virtualAddress;                      /* input from file, address to get */
@@ -113,7 +113,7 @@ else if (0 == args[3].compare("lru")) { strategy = LRU; }
         virtualAddress = (VirtualAddress)address;
 
         /* vmm call to translate address */
-        zlog(ZLOG_LOC, "Global::run - get byte for address : %d", virtualAddress);
+        zlog(ZLOG_LOC, "Global::run - get byte for address : %d\n", virtualAddress);
         vmm.readByte(virtualAddress, physicalAddress, byte);
         ch = byte;
 
@@ -157,13 +157,13 @@ int main(int argc, char* argv[])
         dumpArgs(args);
 
         /* if args count is not sufficient throw error and exit */
-        if(argc < 3)
+        if(argc < 4)
         {
             zlog(ZLOG_LOC, "Global::Main - Not enough parameters\n");
             zlog(ZLOG_LOC, "Global::Main - %s <Backing Store> <input file name> <strategy>\n", argv[0]);
             cout << "Error : Not enough parameters\n";
             cout << "Syntax  - " << argv[0] << " <Backing Store> <input file name> <strategy>" << std::endl;
-            cout << "Strategy can be rr or lru" << std::endl;
+            cout << "Strategy can be fifo or lru" << std::endl;
             goto exit1;
         }
 

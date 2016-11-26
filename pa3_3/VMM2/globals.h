@@ -13,7 +13,7 @@ using std::string;
 */
 
 typedef enum ReplacementStrategy {
-    RoundRobin, 
+    Fifo, 
     LRU
 } ReplacementStrategy;
 
@@ -60,28 +60,28 @@ const PhysicalAddress frameNumMaks = 0xFF00;
 int getOffsetFromPhysicalAddress(PhysicalAddress address)
 {
     int offset = address & PhysicalAddressOffsetMask;
-    zlog(ZLOG_LOC, "globals - phy offset - %d\n", offset);
+    zlog(ZLOG_LOC, "globals - extracted physical Memory offset - %d\n", offset);
     return offset;
 }
 
 int getOffsetFromLogicalAddress(VirtualAddress address)
 {
     int offset = address & VirtualAddressOffsetMask;
-    zlog(ZLOG_LOC, "globals - vir offset - %d\n", offset);
+    zlog(ZLOG_LOC, "globals - extracted virtual Memory offset - %d\n", offset);
     return offset;
 }
 
 FrameNumber getFrameNumberFromPhysicalAddress(PhysicalAddress address)
 {
     FrameNumber fn = (address & frameNumMaks) >> numBitsForFrameOffset;
-    zlog(ZLOG_LOC, "globals - phy fn - %d\n", fn);
+    zlog(ZLOG_LOC, "globals - extracted frame Number address %d - frame %d\n", address, fn);
     return fn;
 }
 
 PageNumber getPageNumberFromLogicalAddress(VirtualAddress address)
 {
     PageNumber fn = (address & pageNumMask) >> numBitsForPageOffset;
-    zlog(ZLOG_LOC, "globals - page fn - %d : %d : %d\n", address, pageNumMask, fn);
+    zlog(ZLOG_LOC, "globals - extracted page page address %d : page %d\n", address, fn);
     return fn;
 }
 

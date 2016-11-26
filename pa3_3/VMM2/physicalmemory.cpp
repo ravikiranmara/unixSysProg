@@ -122,7 +122,7 @@ class PhysicalMemory
         int rval = status_success;
         
         /* write to victim frame */
-        zlog(ZLOG_LOC, "PhysicalMemory::addPage - loading frame at victim : %d\n", frameno);
+        // zlog(ZLOG_LOC, "PhysicalMemory::addPage - loading frame at victim : %d\n", frameno);
         rval = loadFrame(frameno, page);
 
         return rval;
