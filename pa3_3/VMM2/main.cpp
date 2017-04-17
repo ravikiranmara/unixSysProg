@@ -69,9 +69,14 @@ int run(vector<string> args)
 
     ReplacementStrategy strategy;
     if(0 == args[3].compare("fifo")) { strategy = Fifo; }
-else if (0 == args[3].compare("lru")) { strategy = LRU; }
+    else if (0 == args[3].compare("lru")) { strategy = LRU; }
     else { cout << "Invalid Input for strategy. Choose between {fifo or lru}"; }
-    
+
+    // initialize num frames before initializing physical memory. Ideally move args parsing to a different place
+    if(args.size() > 4) {
+        NumberOfFramesInPm = atoi(args[4].c_str());
+    }
+
     VirtualMemoryManager vmm(args[1].c_str(), strategy);     /* does memory management */
     VirtualAddress virtualAddress;                      /* input from file, address to get */
     PhysicalAddress physicalAddress;                    /* output from vmm. the location of the byte in physical memory */
@@ -160,9 +165,9 @@ int main(int argc, char* argv[])
         if(argc < 4)
         {
             zlog(ZLOG_LOC, "Global::Main - Not enough parameters\n");
-            zlog(ZLOG_LOC, "Global::Main - %s <Backing Store> <input file name> <strategy>\n", argv[0]);
+            zlog(ZLOG_LOC, "Global::Main - %s <Backing Store> <input file name> <strategy> <NumberOfFrames(assumes 256 if not specified)\n", argv[0]);
             cout << "Error : Not enough parameters\n";
-            cout << "Syntax  - " << argv[0] << " <Backing Store> <input file name> <strategy>" << std::endl;
+            cout << "Syntax  - " << argv[0] << " <Backing Store> <input file name> <strategy> <NumberOfFrames(assumes 256 if not specified)" << std::endl;
             cout << "Strategy can be fifo or lru" << std::endl;
             goto exit1;
         }

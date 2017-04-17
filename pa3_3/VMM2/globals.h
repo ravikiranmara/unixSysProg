@@ -40,7 +40,7 @@ typedef uint8_t PageNumber;
 const int PageSize = 256;
 const int FrameSize = 256;
 const int NumberOfPageInVm = 256;  /* Number of pages in table */
-const int NumberOfFramesInPm = 128;     /* Number of frames in physical memory  */
+int NumberOfFramesInPm = 256;     /* Number of frames in physical memory  */
 const int NumberOfTlbEntries = 16;         /* number of cache entries in tlb table */
 const int PhysicalMemorySize = 65536;   /* size of physical memory. do we need this? */
 

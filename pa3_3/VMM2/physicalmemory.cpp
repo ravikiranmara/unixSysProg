@@ -10,42 +10,42 @@
 using std::vector;
 using std::stack;
 
-class WorkingSet 
+class WorkingSet
 {
     stack<int> set;
-    
+
 public:
     WorkingSet()
     {
         this->initialize();
     }
-    
+
     void emptyStack()
     {
         while(!set.empty())
             set.pop();
     }
-    
+
     void initialize()
     {
         for(int j=NumberOfFramesInPm-1; j>=0; j--)
             set.push(j);
     }
-    
+
     bool isFreeFrame() {
         return !set.empty();
     }
-    
+
     int getFreeFrame() {
         int top = -1;
         if(set.size() > 0) {
             top = set.top();
             set.pop();
         }
-        
+
         return top;
     }
-    
+
     int addToFreeFrame(int frame) {
         set.push(frame);
     }
@@ -120,7 +120,7 @@ class PhysicalMemory
     int addPage(Page page, FrameNumber frameno)
     {
         int rval = status_success;
-        
+
         /* write to victim frame */
         // zlog(ZLOG_LOC, "PhysicalMemory::addPage - loading frame at victim : %d\n", frameno);
         rval = loadFrame(frameno, page);
